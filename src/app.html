@@ -64,6 +64,9 @@ input,textarea{font:inherit}
 .row.bad{border-left:4px solid var(--red)}
 .quick{flex:none;width:58px;height:44px;border-radius:10px;border:1.5px solid var(--ok);background:#fff;color:var(--ok);font-weight:800;font-size:14px}
 .quick:active{background:var(--ok);color:#fff}
+.quick.edit{border-color:var(--line);color:var(--gray);font-size:12.5px;font-weight:700;width:auto;padding:0 9px;white-space:nowrap}
+.quick.edit:active{background:var(--bg);color:var(--gray)}
+.fix{color:var(--warn);font-weight:700}
 .empty{text-align:center;color:var(--muted);padding:40px 20px}
 .more{display:block;margin:6px auto;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 16px;font-weight:600}
 
@@ -81,6 +84,13 @@ input,textarea{font:inherit}
 .sh-body{overflow-y:auto;padding:12px 16px}
 .allok{width:100%;height:54px;border:0;border-radius:12px;background:var(--ok);color:#fff;font-weight:800;font-size:17px;margin-bottom:12px}
 .allok:active{filter:brightness(.92)}
+.editbar{display:none;background:#FFF7E6;border:1px solid #F5D9A8;color:#7A4B00;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.editbar.on{display:block}
+.editbar b{color:#5C3800}
+.comhead{display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px}
+.comhead .lbl2{margin:0}
+.qc button.on{background:var(--gray);border-color:var(--gray);color:#fff}
+textarea.check{border-color:var(--warn);background:#FFFBF2}
 .crit{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .crit:last-of-type{border-bottom:0}
 .crit .lbl{font-weight:600;font-size:14px;flex:1}
@@ -98,6 +108,7 @@ textarea:focus{border-color:var(--red)}
 .sh-foot{display:flex;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--line)}
 .btn{height:50px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-weight:700;padding:0 14px}
 .btn.pri{background:var(--red);border-color:var(--red);color:#fff;flex:1}
+.sh-foot .btn{white-space:nowrap;font-size:14px;padding:0 12px}
 .btn.ghost{color:var(--muted)}
 .hint{font-size:12px;color:var(--warn);margin-top:4px;min-height:16px}
 
@@ -126,12 +137,18 @@ textarea:focus{border-color:var(--red)}
 .btn.pdf{background:var(--red);border-color:var(--red);color:#fff}
 .fail{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
 .fail:last-child{border-bottom:0}
+.fail{cursor:pointer;align-items:flex-start}
+.fail .go{margin-left:auto;flex:none;color:var(--red);font-weight:700;font-size:13px;padding-left:6px}
 .fail .tg{flex:none;font-size:11px;font-weight:800;color:#fff;background:var(--gray);border-radius:6px;padding:2px 6px;height:fit-content}
 .note{font-size:12.5px;color:var(--muted)}
 
 /* Toast + dialog */
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(30px);background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:90;opacity:0;transition:all .2s;pointer-events:none;max-width:92vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.sheet.on ~ .toast{bottom:84px}
+.toast{white-space:nowrap}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px}
+.toast button{border:0;background:#fff;color:var(--ink);font-weight:800;border-radius:8px;padding:8px 12px;font-size:13px}
 .dlg{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);padding:20px}
 .dlg.on{display:flex}
 .dlg .box{background:#fff;border-radius:16px;padding:18px;max-width:380px;width:100%}
@@ -170,9 +187,10 @@ textarea:focus{border-color:var(--red)}
     <button class="x" id="shX" aria-label="Cerrar">×</button>
   </div>
   <div class="sh-body">
+    <div class="editbar" id="editbar"></div>
     <button class="allok" id="allok">✓ TODO OK · Guardar</button>
     <div id="crits"></div>
-    <div class="lbl2">Comentarios</div>
+    <div class="comhead"><span class="lbl2">Comentarios</span><button class="link" id="comClr">Borrar comentario</button></div>
     <div class="qc" id="qc"></div>
     <textarea id="com" placeholder="Hallazgos, reemplazos, observaciones…"></textarea>
     <div class="hint" id="hint"></div>
@@ -235,7 +253,18 @@ const $ = id => document.getElementById(id);
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function fmtFecha(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
-function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('on'),1800); }
+function toast(msg, undo){
+  const t=$('toast'); clearTimeout(toast._t); t.innerHTML=''; t.append(document.createTextNode(msg));
+  t.classList.toggle('act', !!undo);
+  if(undo){ const b=document.createElement('button'); b.textContent='Deshacer'; b.onclick=()=>{ t.classList.remove('on','act'); undo(); }; t.append(b); }
+  t.classList.add('on'); toast._t=setTimeout(()=>t.classList.remove('on','act'), undo?5000:1800);
+}
+// Guarda una copia del registro anterior para poder deshacer
+function undoFor(tid,n){
+  const prev=S.data[tid][n] ? JSON.parse(JSON.stringify(S.data[tid][n])) : null;
+  return ()=>{ if(prev) S.data[tid][n]=prev; else delete S.data[tid][n]; persist(); refresh(); toast(`#${n} restaurado`); };
+}
+function refresh(){ renderTabs(); if(cur.tab==='REP') renderReport(); else { renderFilters(); renderList(); } }
 function ask(msg, yes='Aceptar'){ return new Promise(r=>{ $('dlgMsg').textContent=msg; $('dlgYes').textContent=yes; $('dlg').classList.add('on');
   const done=v=>{ $('dlg').classList.remove('on'); $('dlgYes').onclick=$('dlgNo').onclick=null; r(v); };
   $('dlgYes').onclick=()=>done(true); $('dlgNo').onclick=()=>done(false); }); }
@@ -311,7 +340,10 @@ function renderFilters(){
 $('filters').addEventListener('click', e=>{ const b=e.target.closest('[data-f]'); if(!b) return; cur.filter=b.dataset.f; cur.limit=60; renderFilters(); renderList(); });
 
 function stLine(rec, t){
-  const s=status(rec);
+  const s=status(rec); const fx = rec && rec.hist && rec.hist.length ? ' <span class="fix">· corregido</span>' : '';
+  return stLine0(rec,t,s)+fx;
+}
+function stLine0(rec, t, s){
   if(s==='pend') return `<span class="pill pend">Pendiente</span>`;
   if(s==='ok') return `<span class="pill ok">✓ OK</span>${rec.com?`<span>${esc(rec.com)}</span>`:''}`;
   const fails = rec.c.map((v,i)=>v==='x'?t.crit[i].toLowerCase():null).filter(Boolean);
@@ -329,13 +361,14 @@ function renderList(){
     return `<div class="row ${s==='ok'?'ok':s==='bad'?'bad':''}">
       <span class="num">${n}</span>
       <button class="main" data-open="${n}"><div class="loc">${highlight(loc,cur.q)}</div><div class="st">${stLine(rec,t)}</div></button>
-      ${s==='pend'?`<button class="quick" data-ok="${n}" aria-label="Marcar todo OK">✓ OK</button>`:''}
+      ${s==='pend'?`<button class="quick" data-ok="${n}" aria-label="Marcar todo OK">✓ OK</button>`:`<button class="quick edit" data-open="${n}" aria-label="Editar">✎ Editar</button>`}
     </div>`; }).join('')}
     ${res.length>cur.limit?`<button class="more" id="more">Ver ${Math.min(60,res.length-cur.limit)} más (${res.length-cur.limit} restantes)</button>`:''}</div>`;
 }
 $('view').addEventListener('click', e=>{
   const o=e.target.closest('[data-open]'); if(o){ openSheet(cur.tab, +o.dataset.open); return; }
-  const k=e.target.closest('[data-ok]'); if(k){ saveRec(cur.tab, +k.dataset.ok, ['ok','ok','ok','ok'], ''); toast(`#${k.dataset.ok} guardado · Todo OK`); afterSave(); return; }
+  const k=e.target.closest('[data-ok]'); if(k){ const n=+k.dataset.ok; const u=undoFor(cur.tab,n); saveRec(cur.tab, n, ['ok','ok','ok','ok'], ''); toast(`#${n} · Todo OK`, u); afterSave(); return; }
+  const f=e.target.closest('[data-fix]'); if(f){ const [tid,n]=f.dataset.fix.split(':'); openSheet(tid,+n); return; }
   if(e.target.id==='more'){ cur.limit+=60; renderList(); }
 });
 
@@ -344,8 +377,18 @@ function openSheet(tid, n){
   const t=TBYID[tid]; const loc=EQUIPOS[t.sheet].find(x=>x[0]===n)[1]; const rec=S.data[tid][n];
   edit={ tid, n, c: rec? rec.c.slice() : [null,null,null,null], com: rec? (rec.com||'') : '' };
   $('shN').textContent='#'+n; $('shLoc').textContent=loc; $('shType').textContent=t.title + (rec&&rec.t?` · guardado ${new Date(rec.t).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}${rec.by?' por '+rec.by:''}`:'');
-  $('com').value=edit.com; $('hint').textContent='';
-  $('qc').innerHTML=t.quick.map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  $('com').value=edit.com; $('hint').textContent=''; $('com').classList.remove('check');
+  edit.wasBad = status(rec)==='bad';
+  const eb=$('editbar');
+  if(rec){
+    const fails=rec.c.map((v,i)=>v==='x'?t.crit[i].toLowerCase():null).filter(Boolean);
+    const antes = status(rec)==='bad' ? `✕ falla en ${fails.join(', ')}` : status(rec)==='ok' ? '✓ todo OK' : 'incompleto';
+    eb.innerHTML=`<b>Editando.</b> Antes: ${esc(antes)}${rec.com?' — “'+esc(rec.com)+'”':''}. Cambie lo que necesite y toque Guardar.`;
+    eb.classList.add('on');
+  } else eb.classList.remove('on');
+  $('allok').textContent = edit.wasBad ? '✓ Cambiar a TODO OK' : '✓ TODO OK · Guardar';
+  $('shSave').textContent = rec ? 'Guardar cambios' : 'Guardar';
+  renderChips();
   renderCrits();
   $('scrim').classList.add('on'); $('sheet').classList.add('on');
   $('sheet').querySelector('.sh-body').scrollTop=0;
@@ -358,35 +401,56 @@ function renderCrits(){
 }
 $('crits').addEventListener('click', e=>{ const b=e.target.closest('[data-v]'); if(!b) return; const i=+b.dataset.i;
   edit.c[i] = edit.c[i]===b.dataset.v ? null : b.dataset.v; renderCrits(); $('hint').textContent=''; });
-$('qc').addEventListener('click', e=>{ const b=e.target.closest('[data-q]'); if(!b) return; const v=$('com').value.trim();
-  $('com').value = v ? (v.includes(b.dataset.q)?v:v+'; '+b.dataset.q) : b.dataset.q; });
+// Comentarios rápidos: tocar agrega; tocar otra vez quita
+function renderChips(){
+  const t=TBYID[edit.tid]; const v=$('com').value;
+  $('qc').innerHTML=t.quick.map(q=>`<button data-q="${esc(q)}" class="${v.includes(q)?'on':''}">${esc(q)}</button>`).join('');
+}
+$('qc').addEventListener('click', e=>{ const b=e.target.closest('[data-q]'); if(!b) return; const q=b.dataset.q;
+  let parts=$('com').value.split(';').map(x=>x.trim()).filter(Boolean);
+  parts = parts.includes(q) ? parts.filter(x=>x!==q) : [...parts, q];
+  $('com').value=parts.join('; '); $('com').classList.remove('check'); renderChips(); });
+$('com').addEventListener('input', ()=>{ $('com').classList.remove('check'); renderChips(); });
+$('comClr').onclick=()=>{ $('com').value=''; $('com').classList.remove('check'); renderChips(); $('hint').textContent=''; };
 function closeSheet(){ $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); edit=null; }
 $('shX').onclick=closeSheet; $('scrim').onclick=closeSheet;
 
 function saveRec(tid,n,c,com){
-  if(c.every(v=>!v) && !com){ delete S.data[tid][n]; }
-  else S.data[tid][n]={ c, com, t:Date.now(), by:S.meta.tecnico||'' };
+  const old=S.data[tid][n];
+  if(c.every(v=>!v) && !com){ delete S.data[tid][n]; persist(); return; }
+  // Historial de correcciones (últimas 5) para saber qué se cambió
+  let hist = old && old.hist ? old.hist.slice() : [];
+  if(old && (old.com!==com || old.c.join()!==c.join())) hist.push({ c:old.c, com:old.com, t:old.t, by:old.by });
+  hist = hist.slice(-5);
+  S.data[tid][n]={ c, com, t:Date.now(), by:S.meta.tecnico||'', ...(hist.length?{hist}:{}) };
   persist();
 }
 function commitEdit(){
   edit.com=$('com').value.trim();
-  if(edit.c.includes('x') && !edit.com){ $('hint').textContent='Tip: describe la falla en comentarios (opcional).'; }
+  const u=undoFor(edit.tid, edit.n); const existed=!!S.data[edit.tid][edit.n];
   saveRec(edit.tid, edit.n, edit.c, edit.com);
-  toast(`#${edit.n} guardado`);
+  toast(existed?`#${edit.n} actualizado`:`#${edit.n} guardado`, u);
 }
 function afterSave(){
-  renderTabs(); renderFilters();
-  if(cur.q){ qIn.value=''; cur.q=''; $('searchBox').classList.remove('has'); renderList(); qIn.focus(); }
-  else renderList();
+  if(cur.tab!=='REP' && cur.q){ qIn.value=''; cur.q=''; $('searchBox').classList.remove('has'); refresh(); qIn.focus(); }
+  else refresh();
 }
-$('allok').onclick=()=>{ edit.c=['ok','ok','ok','ok']; commitEdit(); closeSheet(); afterSave(); };
+$('allok').onclick=()=>{
+  edit.c=['ok','ok','ok','ok'];
+  // Si antes tenía falla y hay comentario, se pide revisarlo (puede que ya no aplique)
+  if(edit.wasBad && $('com').value.trim()){
+    edit.wasBad=false; renderCrits(); $('allok').textContent='✓ TODO OK · Guardar';
+    $('com').classList.add('check'); $('hint').textContent='Ya quedó todo en ✓. ¿El comentario sigue aplicando? Bórrelo o edítelo y toque Guardar cambios.';
+    $('com').scrollIntoView({block:'center',behavior:'smooth'}); return;
+  }
+  commitEdit(); closeSheet(); afterSave(); };
 $('shSave').onclick=()=>{ commitEdit(); closeSheet(); afterSave(); };
-$('shClear').onclick=async()=>{ if(!(await ask('¿Borrar la inspección de este equipo?','Borrar'))) return; const {tid,n}=edit; delete S.data[tid][n]; persist(); closeSheet(); renderTabs(); renderFilters(); renderList(); toast(`#${n} sin marcar`); };
+$('shClear').onclick=async()=>{ if(!(await ask('¿Borrar la inspección de este equipo?','Borrar'))) return; const {tid,n}=edit; const u=undoFor(tid,n); delete S.data[tid][n]; persist(); closeSheet(); refresh(); toast(`#${n} sin marcar`, u); };
 $('shSaveNext').onclick=()=>{
   const {tid,n}=edit; commitEdit();
   const items=EQUIPOS[TBYID[tid].sheet]; const idx=items.findIndex(x=>x[0]===n);
   let next=null; for(let k=idx+1;k<items.length;k++){ if(status(S.data[tid][items[k][0]])==='pend'){ next=items[k][0]; break; } }
-  renderTabs(); renderFilters(); renderList();
+  refresh();
   if(next) openSheet(tid,next); else { closeSheet(); toast('No hay más pendientes después de este'); }
 };
 
@@ -413,8 +477,8 @@ function renderReport(){
       <p class="note" style="margin-top:0">Sale con el mismo formato de siempre: una hoja por tipo (Detectores, Alarmas, Lámparas) con N°, ubicación, ✓ / ✕ / N/A y comentarios.</p>
       <div class="actions"><button class="btn xl" id="dlXlsx">⬇ Excel</button><button class="btn pdf" id="dlPdf">⬇ PDF</button></div>
     </div>
-    <div class="card"><h3>Hallazgos (${fails.length})</h3>
-      ${fails.length? fails.map(f=>`<div class="fail"><span class="tg">${f.t.short.slice(0,3).toUpperCase()} ${f.n}</span><div><b>${esc(f.loc)}</b><br><span class="note">${esc(f.r.c.map((v,i)=>v==='x'?f.t.crit[i].toLowerCase():null).filter(Boolean).join(', '))}${f.r.com?' — '+esc(f.r.com):''}</span></div></div>`).join('') : '<p class="note" style="margin:0">Sin fallas registradas.</p>'}
+    <div class="card"><h3>Hallazgos (${fails.length})</h3>${fails.length?'<p class="note" style="margin:-4px 0 6px">Toque un hallazgo para corregirlo.</p>':''}
+      ${fails.length? fails.map(f=>`<div class="fail" data-fix="${f.t.id}:${f.n}"><span class="tg">${f.t.short.slice(0,3).toUpperCase()} ${f.n}</span><div><b>${esc(f.loc)}</b><br><span class="note">${esc(f.r.c.map((v,i)=>v==='x'?f.t.crit[i].toLowerCase():null).filter(Boolean).join(', '))}${f.r.com?' — '+esc(f.r.com):''}</span></div><span class="go">Corregir ›</span></div>`).join('') : '<p class="note" style="margin:0">Sin fallas registradas.</p>'}
     </div>
     <div class="card"><h3>Varios teléfonos / respaldo</h3>
       <p class="note" style="margin-top:0">Si varios técnicos inspeccionan a la vez, cada uno exporta su respaldo y la encargada los une aquí. Se conserva la marca más reciente de cada equipo.</p>

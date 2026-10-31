@@ -8,6 +8,7 @@ App para hacer desde el teléfono la inspección de **detectores de humo**, **al
 - Búsqueda rápida sin importar tildes ni mayúsculas: "guardalino 20", "cocina oliva", "145". Con Enter se abre el primer resultado.
 - Se marca con ✓ / ✕ / N/A por criterio, con comentarios rápidos. El botón **✓ OK** de la lista guarda un equipo en buen estado con un solo toque.
 - Filtros de Pendientes, Con falla y OK, y avance por tipo.
+- **Corregir marcas:** los equipos ya marcados muestran **✎ Editar** para cambiar checks y comentarios. Desde *Reporte → Hallazgos* también se toca una falla para corregirla. Cada guardado tiene **Deshacer** por unos segundos, y el equipo queda señalado como "corregido" (la app guarda las últimas 5 versiones).
 - Fecha, técnico, encargado y **firmas con el dedo**.
 - **Excel:** llena la plantilla original (`assets/plantilla_inspeccion.xlsx`) con logo, colores y las tres hojas.
 - **PDF:** página de resumen con los hallazgos y una sección por tipo, con el mismo diseño.
