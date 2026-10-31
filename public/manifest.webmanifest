@@ -1,0 +1,16 @@
+{
+  "name": "Inspección SOS FIRE",
+  "short_name": "SOS FIRE",
+  "description": "Inspección de detectores, alarmas y lámparas de emergencia",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F5F4",
+  "theme_color": "#C90012",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

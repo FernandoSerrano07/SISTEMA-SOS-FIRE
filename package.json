@@ -1,0 +1,19 @@
+{
+  "name": "sistema-sos-fire",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App móvil de inspección SOS FIRE: detectores, alarmas y lámparas de emergencia, con reporte en Excel y PDF",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "npx --yes serve dist -l 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.8.2"
+  }
+}
