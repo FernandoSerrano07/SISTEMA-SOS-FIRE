@@ -14,13 +14,16 @@ App para hacer desde el teléfono la inspección de **detectores de humo**, **al
 - **PDF:** página de resumen con los hallazgos y una sección por tipo, con el mismo diseño.
 - **Varios técnicos:** cada uno exporta su respaldo (.json) y la encargada los une. Si dos marcaron el mismo equipo, queda la marca más reciente.
 - Funciona **sin internet**: los datos se guardan en el teléfono y la app se puede instalar en la pantalla de inicio.
+- **Tiempo real entre dispositivos (con Firebase):** lo que marca un técnico aparece al instante en los demás como "✓ OK · Carlos 10:05". Si abren un equipo que otro ya revisó, la app lo avisa. Sin señal se guarda en el teléfono y se envía solo al volver la conexión. "Iniciar nueva inspección" cambia a todos los dispositivos, y la anterior queda guardada en la nube.
 
-> Importante: en esta versión los datos viven en el navegador de cada teléfono. Si se borran los datos del navegador, se pierde lo que no se haya exportado. Hay que exportar el respaldo o el reporte al terminar.
+> Sin Firebase configurado, la app funciona igual, pero cada dispositivo guarda solo lo suyo (para juntar, se usan los respaldos).
 
 ## Estructura
 
 ```
 src/app.html                  Código de la app (HTML, CSS y JavaScript)
+src/cloud.js                  Sincronización en tiempo real (Firebase)
+firestore.rules               Reglas de seguridad para Firestore
 assets/plantilla_inspeccion.xlsx   Formato Excel original; de aquí sale el listado de equipos
 assets/logo.png               Logo SOS FIRE
 public/                       Manifest, íconos y service worker (modo app y sin internet)
@@ -34,11 +37,33 @@ Requiere Node.js 18 o más reciente.
 
 ```bash
 npm install
-npm run build      # genera dist/index.html
+npm run build      # genera dist/index.html (sin nube)
+FIREBASE_CONFIG='{...}' npm run build   # con tiempo real
 npm start          # abre http://localhost:3000
 ```
 
 También se puede abrir `dist/index.html` con doble clic. Funciona igual, solo que sin el modo "instalar app".
+
+## Activar el tiempo real (Firebase)
+
+Se hace una sola vez. Es gratis con el plan Spark de Firebase, que alcanza de sobra para este uso.
+
+1. **Crear el proyecto:** entre a https://console.firebase.google.com con la cuenta de Google de la empresa → **Crear un proyecto** → nombre `sos-fire` → Google Analytics no es necesario → **Crear**.
+2. **Registrar la app web:** en la portada del proyecto toque el ícono **`</>`** (Web) → apodo `sistema-sos-fire` → **no** marque Hosting → **Registrar app**. Copie el bloque `const firebaseConfig = { ... }` que aparece (apiKey, authDomain, projectId, …).
+3. **Activar el inicio de sesión:** menú **Compilación → Authentication** → **Comenzar** → pestaña **Método de acceso** → **Correo electrónico/contraseña** → Habilitar → Guardar.
+4. **Crear los usuarios:** en Authentication → pestaña **Usuarios** → **Agregar usuario**. Puede crear uno para todo el equipo (ej. `tecnicos@sosfire.com`) o uno por técnico. Para quitarle el acceso a alguien, se elimina o se inhabilita aquí.
+5. **Crear la base de datos:** menú **Compilación → Firestore Database** → **Crear base de datos** → edición **Standard** si lo pregunta → ubicación `nam5 (United States)` → **modo de producción** → Crear.
+6. **Poner las reglas de seguridad:** en Firestore → pestaña **Reglas**, borre lo que hay, pegue el contenido del archivo [`firestore.rules`](firestore.rules) → **Publicar**.
+7. **Dominio autorizado:** Authentication → **Configuración** → **Dominios autorizados** → **Agregar dominio** → `sistema-sos-fire.onrender.com` (o el dominio que le dio Render).
+8. **Conectar con Render:** en Render abra el sitio → **Environment** → **Add Environment Variable**:
+   - Key: `FIREBASE_CONFIG`
+   - Value: pegue el bloque del paso 2, tal cual (con o sin `const firebaseConfig =`).
+   
+   Toque **Save, rebuild, and deploy**. En el registro debe aparecer `Nube: Firebase proyecto "sos-fire"`.
+
+La primera vez que alguien entre, la app crea la inspección en la nube y sube las marcas que ese dispositivo ya tuviera.
+
+> La configuración web de Firebase (apiKey, etc.) no es secreta: lo que protege los datos son el inicio de sesión y las reglas del paso 6.
 
 ## Cambiar el listado de equipos
 

@@ -5,6 +5,7 @@
 //   así que si cambian el Excel solo hay que volver a desplegar.
 import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync } from 'node:fs';
 import ExcelJS from 'exceljs';
+import { build } from 'esbuild';
 
 const read = (p) => readFileSync(p, 'utf8');
 const lib = (pkg, file) => read(`node_modules/${pkg}/${file}`);
@@ -35,7 +36,27 @@ async function leerEquipos() {
   return out;
 }
 
+// Configuración de Firebase (opcional). En Render se pone en Environment → FIREBASE_CONFIG.
+// Acepta el bloque que da Firebase, con o sin "const firebaseConfig =".
+function leerConfigNube() {
+  let raw = (process.env.FIREBASE_CONFIG || '').trim();
+  if (!raw) { console.log('  Nube: NO configurada (cada dispositivo guarda lo suyo)'); return null; }
+  raw = raw.replace(/^[^{]*/, '').replace(/[^}]*$/, ''); // quita "const firebaseConfig =" y ";"
+  let cfg;
+  try { cfg = JSON.parse(raw); }
+  catch { cfg = Function(`"use strict"; return (${raw});`)(); } // permite claves sin comillas
+  for (const k of ['apiKey', 'authDomain', 'projectId', 'appId']) if (!cfg[k]) throw new Error(`FIREBASE_CONFIG no tiene "${k}"`);
+  console.log(`  Nube: Firebase proyecto "${cfg.projectId}"${cfg.emulator ? ' (EMULADOR)' : ''}`);
+  return cfg;
+}
+
 const equipos = await leerEquipos();
+const nube = leerConfigNube();
+let libNube = '';
+if (nube) {
+  const r = await build({ entryPoints: ['src/cloud.js'], bundle: true, minify: true, format: 'iife', target: 'es2019', write: false, legalComments: 'none' });
+  libNube = r.outputFiles[0].text;
+}
 let html = read('src/app.html');
 const reemplazos = {
   '/*LIB_EXCELJS*/': lib('exceljs', 'dist/exceljs.min.js'),
@@ -44,6 +65,8 @@ const reemplazos = {
   '/*LOGO_B64*/': readFileSync('assets/logo.png').toString('base64'),
   '/*TEMPLATE_B64*/': readFileSync(TEMPLATE).toString('base64'),
   '/*EQUIPOS_JSON*/': JSON.stringify(equipos),
+  '/*LIB_CLOUD*/': libNube.replace(/<\/script/gi, '<\\/script'),
+  '/*CLOUD_CONFIG*/null': nube ? JSON.stringify(nube) : 'null',
 };
 for (const [k, v] of Object.entries(reemplazos)) {
   if (html.split(k).length !== 2) throw new Error(`Marcador ${k} no encontrado una sola vez en src/app.html`);

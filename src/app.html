@@ -156,6 +156,24 @@ textarea:focus{border-color:var(--red)}
 .dlg .box .b{display:flex;gap:8px;justify-content:flex-end}
 .busy{position:fixed;inset:0;z-index:99;background:rgba(255,255,255,.7);display:none;align-items:center;justify-content:center;font-weight:700}
 .busy.on{display:flex}
+/* Nube: estado, inicio de sesión, cambios en vivo */
+.net{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;margin-top:3px}
+.net::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.net.on{background:var(--ok-soft);color:var(--ok)}
+.net.off{background:#FFF4E0;color:var(--warn)}
+.net.loc{display:none}
+.who{color:var(--muted);font-size:11.5px}
+.row.flash{animation:flash 1.6s ease}
+@keyframes flash{0%,40%{background:#FFF6CC}100%{background:var(--card)}}
+.gate{position:fixed;inset:0;z-index:97;background:var(--bg);display:none;align-items:center;justify-content:center;padding:20px}
+.gate.on{display:flex}
+.gate .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;max-width:380px;width:100%}
+.gate img{height:34px;display:block;margin:0 auto 14px}
+.gate h2{margin:0 0 4px;font-size:18px;text-align:center}
+.gate p{margin:0 0 14px;color:var(--muted);font-size:13.5px;text-align:center}
+.gate .btn{width:100%;margin-top:4px}
+.gate .err{color:var(--red);font-size:13px;min-height:18px;margin-top:8px;text-align:center}
+.editbar.warn{background:#FDECEC;border-color:#F3B7BC;color:#7A000A}
 </style>
 </head>
 <body>
@@ -163,7 +181,7 @@ textarea:focus{border-color:var(--red)}
   <header class="top">
     <div class="brand">
       <img id="logo" alt="SOS FIRE">
-      <div class="proj"><b>Decameron Salinitas</b><span id="hdrInfo">Inspección</span></div>
+      <div class="proj"><b>Decameron Salinitas</b><span id="hdrInfo">Inspección</span><br><span class="net loc" id="net"></span></div>
     </div>
     <nav class="tabs" id="tabs"></nav>
     <div class="progress"><i id="prog"></i></div>
@@ -206,14 +224,27 @@ textarea:focus{border-color:var(--red)}
 <div class="dlg" id="dlg"><div class="box"><p id="dlgMsg"></p><div class="b"><button class="btn" id="dlgNo">Cancelar</button><button class="btn pri" id="dlgYes">Aceptar</button></div></div></div>
 <div class="busy" id="busy">Generando…</div>
 <input type="file" id="fileImport" accept=".json,application/json" multiple hidden>
+<div class="gate" id="gateLogin"><form class="box" id="loginForm">
+  <img id="logo2" alt="SOS FIRE"><h2>Iniciar sesión</h2><p>Use el correo y la contraseña que le dio SOS FIRE. Solo se pide una vez en este dispositivo.</p>
+  <div class="field"><label>Correo</label><input id="lgEmail" type="email" autocomplete="username" required></div>
+  <div class="field"><label>Contraseña</label><input id="lgPass" type="password" autocomplete="current-password" required></div>
+  <button class="btn pri" type="submit" id="lgBtn">Entrar</button><div class="err" id="lgErr"></div>
+</form></div>
+<div class="gate" id="gateName"><form class="box" id="nameForm">
+  <h2>¿Quién está usando este dispositivo?</h2><p>Su nombre aparecerá en los equipos que revise, para que sus compañeros sepan quién lo hizo.</p>
+  <div class="field"><label>Su nombre</label><input id="nmInput" autocomplete="name" placeholder="Ej. Carlos Martínez" required></div>
+  <button class="btn pri" type="submit">Continuar</button>
+</form></div>
 
 <script>/*LIB_EXCELJS*/</script>
 <script>/*LIB_JSPDF*/</script>
 <script>/*LIB_AUTOTABLE*/</script>
+<script>/*LIB_CLOUD*/</script>
 <script>
 const LOGO_B64 = "/*LOGO_B64*/";
 const TEMPLATE_B64 = "/*TEMPLATE_B64*/";
 const EQUIPOS = /*EQUIPOS_JSON*/;
+const CLOUD_CONFIG = /*CLOUD_CONFIG*/null;  // se llena al compilar con la variable FIREBASE_CONFIG
 
 /* ---------- Configuración de cada tipo de equipo (igual al formato Excel) ---------- */
 const TYPES = [
@@ -232,7 +263,13 @@ const MARK = { ok:'✓', x:'✕', na:'N/A' };
 const KEY = 'sosfire_decameron_v1';
 
 /* ---------- Estado ---------- */
-let S = load();
+const CLOUD = !!(CLOUD_CONFIG && window.Cloud);
+const KEY_CLOUD = 'sosfire_cloud_cache_v1', KEY_USER = 'sosfire_usuario';
+let USER = (()=>{ try{ return localStorage.getItem(KEY_USER)||''; }catch(e){ return ''; } })();
+let INSP = null;          // id de la inspección activa en la nube
+let sigBusy=false, pendingRefresh=false, refreshTimer=null;
+const flashing=new Set(), pendingMeta={};
+let S = CLOUD ? loadCloudCache() : load();
 let cur = { tab:'DET', filter:'all', q:'', limit:60 };
 let edit = null; // {type, n, c:[..], com}
 let lastList = [];
@@ -246,12 +283,30 @@ function load(){
   try{ const s=JSON.parse(localStorage.getItem(KEY)); if(s && s.data) return Object.assign(blank(), s); }catch(e){}
   return blank();
 }
-function persist(){ S.updated=Date.now(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function persist(){ S.updated=Date.now(); try{ CLOUD ? localStorage.setItem(KEY_CLOUD, JSON.stringify({id:INSP, S})) : localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+function loadCloudCache(){ try{ const o=JSON.parse(localStorage.getItem(KEY_CLOUD)); if(o && o.S && o.S.data){ INSP=o.id; return Object.assign(blank(), o.S); } }catch(e){} return blank(); }
+const who = () => USER || S.meta.tecnico || '';
+
+/* Guardar un equipo: en este dispositivo y, si hay nube, para todos */
+function putRec(tid, n, rec){
+  if(rec) S.data[tid][n]=rec; else delete S.data[tid][n];
+  persist();
+  if(CLOUD && INSP) Cloud.saveEquipo(INSP, tid, n, rec||null).catch(e=>cloudError(e));
+}
+/* Datos del formato (fecha, nombres, firmas): compartidos */
+const metaTimers={};
+function setMeta(k, v, wait=600){
+  S.meta[k]=v; persist();
+  if(CLOUD && INSP){ clearTimeout(metaTimers[k]); pendingMeta[k]=true;
+    metaTimers[k]=setTimeout(()=>{ Cloud.saveMeta(INSP,{[k]:v}).catch(e=>cloudError(e)); setTimeout(()=>{ delete pendingMeta[k]; }, 1500); }, wait); }
+}
 
 /* ---------- Utilidades ---------- */
 const $ = id => document.getElementById(id);
 const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
 const esc = s => String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function hhmm(t){ const d=new Date(t); const hoy=new Date().toDateString()===d.toDateString();
+  return (hoy?'':d.toLocaleDateString('es',{day:'2-digit',month:'2-digit'})+' ')+d.toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'}); }
 function fmtFecha(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
 function toast(msg, undo){
   const t=$('toast'); clearTimeout(toast._t); t.innerHTML=''; t.append(document.createTextNode(msg));
@@ -262,7 +317,7 @@ function toast(msg, undo){
 // Guarda una copia del registro anterior para poder deshacer
 function undoFor(tid,n){
   const prev=S.data[tid][n] ? JSON.parse(JSON.stringify(S.data[tid][n])) : null;
-  return ()=>{ if(prev) S.data[tid][n]=prev; else delete S.data[tid][n]; persist(); refresh(); toast(`#${n} restaurado`); };
+  return ()=>{ putRec(tid, n, prev); refresh(); toast(`#${n} restaurado`); };
 }
 function refresh(){ renderTabs(); if(cur.tab==='REP') renderReport(); else { renderFilters(); renderList(); } }
 function ask(msg, yes='Aceptar'){ return new Promise(r=>{ $('dlgMsg').textContent=msg; $('dlgYes').textContent=yes; $('dlg').classList.add('on');
@@ -289,7 +344,7 @@ function renderTabs(){
   $('tabs').innerHTML = html;
   const all = TYPES.map(t=>counts(t.id)); const tot=all.reduce((a,c)=>a+c.total,0), done=all.reduce((a,c)=>a+c.done,0);
   $('prog').style.width = (cur.tab==='REP' ? done/tot : (counts(cur.tab).done/counts(cur.tab).total))*100+'%';
-  $('hdrInfo').textContent = `${fmtFecha(S.meta.fecha)}${S.meta.tecnico?' · '+S.meta.tecnico:''}`;
+  $('hdrInfo').textContent = `${fmtFecha(S.meta.fecha)}${who()?' · '+who():''}`;
 }
 $('tabs').addEventListener('click', e=>{ const b=e.target.closest('[data-tab]'); if(!b) return;
   cur.tab=b.dataset.tab; cur.limit=60; render(); window.scrollTo(0,0); });
@@ -341,7 +396,8 @@ $('filters').addEventListener('click', e=>{ const b=e.target.closest('[data-f]')
 
 function stLine(rec, t){
   const s=status(rec); const fx = rec && rec.hist && rec.hist.length ? ' <span class="fix">· corregido</span>' : '';
-  return stLine0(rec,t,s)+fx;
+  const by = s!=='pend' && rec.t ? ` <span class="who">· ${esc(rec.by||'')} ${hhmm(rec.t)}</span>` : '';
+  return stLine0(rec,t,s)+by+fx;
 }
 function stLine0(rec, t, s){
   if(s==='pend') return `<span class="pill pend">Pendiente</span>`;
@@ -358,7 +414,7 @@ function renderList(){
   const shown = res.slice(0,cur.limit);
   if(!res.length){ $('view').innerHTML=`<div class="list"><div class="empty">Sin resultados${cur.q?` para “${esc(cur.q)}”`:''}.</div></div>`; return; }
   $('view').innerHTML = `<div class="list" id="list">${shown.map(({it})=>{ const [n,loc]=it; const rec=d[n]; const s=status(rec);
-    return `<div class="row ${s==='ok'?'ok':s==='bad'?'bad':''}">
+    return `<div class="row ${s==='ok'?'ok':s==='bad'?'bad':''} ${flashing.has(cur.tab+'_'+n)?'flash':''}">
       <span class="num">${n}</span>
       <button class="main" data-open="${n}"><div class="loc">${highlight(loc,cur.q)}</div><div class="st">${stLine(rec,t)}</div></button>
       ${s==='pend'?`<button class="quick" data-ok="${n}" aria-label="Marcar todo OK">✓ OK</button>`:`<button class="quick edit" data-open="${n}" aria-label="Editar">✎ Editar</button>`}
@@ -383,8 +439,11 @@ function openSheet(tid, n){
   if(rec){
     const fails=rec.c.map((v,i)=>v==='x'?t.crit[i].toLowerCase():null).filter(Boolean);
     const antes = status(rec)==='bad' ? `✕ falla en ${fails.join(', ')}` : status(rec)==='ok' ? '✓ todo OK' : 'incompleto';
-    eb.innerHTML=`<b>Editando.</b> Antes: ${esc(antes)}${rec.com?' — “'+esc(rec.com)+'”':''}. Cambie lo que necesite y toque Guardar.`;
-    eb.classList.add('on');
+    const otro = rec.by && rec.by!==who();
+    eb.innerHTML = otro
+      ? `<b>Ya lo revisó ${esc(rec.by)}</b> (${hhmm(rec.t)}): ${esc(antes)}${rec.com?' — “'+esc(rec.com)+'”':''}. Solo cámbielo si encontró algo distinto.`
+      : `<b>Editando.</b> Antes: ${esc(antes)}${rec.com?' — “'+esc(rec.com)+'”':''}. Cambie lo que necesite y toque Guardar.`;
+    eb.classList.remove('warn'); eb.classList.add('on');
   } else eb.classList.remove('on');
   $('allok').textContent = edit.wasBad ? '✓ Cambiar a TODO OK' : '✓ TODO OK · Guardar';
   $('shSave').textContent = rec ? 'Guardar cambios' : 'Guardar';
@@ -417,13 +476,12 @@ $('shX').onclick=closeSheet; $('scrim').onclick=closeSheet;
 
 function saveRec(tid,n,c,com){
   const old=S.data[tid][n];
-  if(c.every(v=>!v) && !com){ delete S.data[tid][n]; persist(); return; }
+  if(c.every(v=>!v) && !com){ putRec(tid, n, null); return; }
   // Historial de correcciones (últimas 5) para saber qué se cambió
   let hist = old && old.hist ? old.hist.slice() : [];
   if(old && (old.com!==com || old.c.join()!==c.join())) hist.push({ c:old.c, com:old.com, t:old.t, by:old.by });
   hist = hist.slice(-5);
-  S.data[tid][n]={ c, com, t:Date.now(), by:S.meta.tecnico||'', ...(hist.length?{hist}:{}) };
-  persist();
+  putRec(tid, n, { c, com, t:Date.now(), by:who(), ...(hist.length?{hist}:{}) });
 }
 function commitEdit(){
   edit.com=$('com').value.trim();
@@ -444,10 +502,13 @@ $('allok').onclick=()=>{
     $('com').scrollIntoView({block:'center',behavior:'smooth'}); return;
   }
   commitEdit(); closeSheet(); afterSave(); };
-$('shSave').onclick=()=>{ commitEdit(); closeSheet(); afterSave(); };
-$('shClear').onclick=async()=>{ if(!(await ask('¿Borrar la inspección de este equipo?','Borrar'))) return; const {tid,n}=edit; const u=undoFor(tid,n); delete S.data[tid][n]; persist(); closeSheet(); refresh(); toast(`#${n} sin marcar`, u); };
+$('shSave').onclick=()=>{
+  // Sin marcas ni comentario: solo se cierra (para borrar está el botón Borrar)
+  if(edit.c.every(v=>!v) && !$('com').value.trim()){ closeSheet(); return; }
+  commitEdit(); closeSheet(); afterSave(); };
+$('shClear').onclick=async()=>{ if(!(await ask('¿Borrar la inspección de este equipo?','Borrar'))) return; const {tid,n}=edit; const u=undoFor(tid,n); putRec(tid, n, null); closeSheet(); refresh(); toast(`#${n} sin marcar`, u); };
 $('shSaveNext').onclick=()=>{
-  const {tid,n}=edit; commitEdit();
+  const {tid,n}=edit; if(!(edit.c.every(v=>!v) && !$('com').value.trim())) commitEdit();
   const items=EQUIPOS[TBYID[tid].sheet]; const idx=items.findIndex(x=>x[0]===n);
   let next=null; for(let k=idx+1;k<items.length;k++){ if(status(S.data[tid][items[k][0]])==='pend'){ next=items[k][0]; break; } }
   refresh();
@@ -480,23 +541,37 @@ function renderReport(){
     <div class="card"><h3>Hallazgos (${fails.length})</h3>${fails.length?'<p class="note" style="margin:-4px 0 6px">Toque un hallazgo para corregirlo.</p>':''}
       ${fails.length? fails.map(f=>`<div class="fail" data-fix="${f.t.id}:${f.n}"><span class="tg">${f.t.short.slice(0,3).toUpperCase()} ${f.n}</span><div><b>${esc(f.loc)}</b><br><span class="note">${esc(f.r.c.map((v,i)=>v==='x'?f.t.crit[i].toLowerCase():null).filter(Boolean).join(', '))}${f.r.com?' — '+esc(f.r.com):''}</span></div><span class="go">Corregir ›</span></div>`).join('') : '<p class="note" style="margin:0">Sin fallas registradas.</p>'}
     </div>
-    <div class="card"><h3>Varios teléfonos / respaldo</h3>
-      <p class="note" style="margin-top:0">Si varios técnicos inspeccionan a la vez, cada uno exporta su respaldo y la encargada los une aquí. Se conserva la marca más reciente de cada equipo.</p>
+    ${CLOUD ? `<div class="card"><h3>Este dispositivo</h3>
+      <div class="field"><label>Su nombre (aparece en los equipos que revise)</label><input id="meName" value="${esc(USER)}"></div>
+      <p class="note" style="margin:0 0 8px">Los cambios se comparten en tiempo real con todos los dispositivos. Sin señal se guardan aquí y se envían solos al volver la conexión.</p>
+      <button class="btn ghost" id="logout" style="width:100%">Cerrar sesión</button></div>` : ''}
+    <div class="card"><h3>${CLOUD?'Respaldo':'Varios teléfonos / respaldo'}</h3>
+      <p class="note" style="margin-top:0">${CLOUD?'Opcional: guarde una copia en archivo, o suba respaldos de la versión anterior de la app.':'Si varios técnicos inspeccionan a la vez, cada uno exporta su respaldo y la encargada los une aquí. Se conserva la marca más reciente de cada equipo.'}</p>
       <div class="actions"><button class="btn" id="bkOut">Exportar respaldo</button><button class="btn" id="bkIn">Unir respaldos</button></div>
-      <div style="margin-top:8px"><button class="btn ghost" id="reset" style="width:100%">Nueva inspección (borrar todo)</button></div>
+      <div style="margin-top:8px"><button class="btn ghost" id="reset" style="width:100%">${CLOUD?'Iniciar nueva inspección':'Nueva inspección (borrar todo)'}</button></div>
     </div>
   </div>`;
-  $('mFecha').onchange=e=>{ S.meta.fecha=e.target.value; persist(); renderTabs(); };
-  $('mTec').oninput=e=>{ S.meta.tecnico=e.target.value; persist(); renderTabs(); };
-  $('mEnc').oninput=e=>{ S.meta.encargado=e.target.value; persist(); };
+  $('mFecha').onchange=e=>{ setMeta('fecha', e.target.value, 0); renderTabs(); };
+  $('mTec').oninput=e=>{ setMeta('tecnico', e.target.value); renderTabs(); };
+  $('mEnc').oninput=e=>{ setMeta('encargado', e.target.value); };
+  if(CLOUD){ $('meName').oninput=e=>{ USER=e.target.value.trim(); try{ localStorage.setItem(KEY_USER, USER); }catch(_){} renderTabs(); };
+    $('logout').onclick=async()=>{ if(!(await ask('¿Cerrar sesión en este dispositivo?','Cerrar sesión'))) return; Cloud.stop(); await Cloud.logout(); }; }
   sigPad($('sigTec'),'firmaTec'); sigPad($('sigEnc'),'firmaEnc');
-  $('view').querySelectorAll('[data-sigclr]').forEach(b=>b.onclick=()=>{ S.meta[b.dataset.sigclr]=''; persist(); renderReport(); });
+  $('view').querySelectorAll('[data-sigclr]').forEach(b=>b.onclick=()=>{ setMeta(b.dataset.sigclr, '', 0); renderReport(); });
   $('dlXlsx').onclick=()=>run(exportXlsx);
   $('dlPdf').onclick=()=>run(exportPdf);
   $('bkOut').onclick=()=>{ const name=`respaldo_${(S.meta.tecnico||'tecnico').replace(/\s+/g,'_')}_${S.meta.fecha}.json`;
     saveFile(name, new Blob([JSON.stringify(S)],{type:'application/json'})); };
   $('bkIn').onclick=()=>$('fileImport').click();
-  $('reset').onclick=async()=>{ if(!(await ask('Se borrarán todas las marcas, comentarios y firmas de esta inspección. Exporte un respaldo antes si lo necesita.','Borrar todo'))) return;
+  $('reset').onclick=async()=>{
+    if(CLOUD){
+      if(!(await ask('Se empezará una inspección nueva en blanco en TODOS los dispositivos. La inspección actual queda guardada en la nube. Descargue el Excel/PDF antes si lo necesita.','Iniciar nueva'))) return;
+      $('busy').classList.add('on');
+      try{ await Cloud.newInspection({ fecha:today(), tecnico:S.meta.tecnico||'', encargado:S.meta.encargado||'', firmaTec:'', firmaEnc:'' }); toast('Inspección nueva lista'); }
+      catch(e){ cloudError(e); } finally{ $('busy').classList.remove('on'); }
+      return;
+    }
+    if(!(await ask('Se borrarán todas las marcas, comentarios y firmas de esta inspección. Exporte un respaldo antes si lo necesita.','Borrar todo'))) return;
     S=blank(); persist(); render(); toast('Inspección nueva lista'); };
 }
 async function run(fn){ $('busy').classList.add('on'); try{ await fn(); }catch(e){ console.error(e); toast('No se pudo generar: '+(e.message||e)); } finally{ $('busy').classList.remove('on'); } }
@@ -504,7 +579,9 @@ async function run(fn){ $('busy').classList.add('on'); try{ await fn(); }catch(e
 $('fileImport').onchange=async e=>{
   let n=0, files=[...e.target.files];
   for(const f of files){ try{ const o=JSON.parse(await f.text()); if(!o.data) continue;
-    for(const tid of Object.keys(S.data)){ for(const [k,rec] of Object.entries(o.data[tid]||{})){ const mine=S.data[tid][k]; if(!mine || (rec.t||0)>(mine.t||0)){ S.data[tid][k]=rec; n++; } } }
+    const up=[];
+    for(const tid of Object.keys(S.data)){ for(const [k,rec] of Object.entries(o.data[tid]||{})){ const mine=S.data[tid][k]; if(!mine || (rec.t||0)>(mine.t||0)){ S.data[tid][k]=rec; up.push({tid,n:k,rec}); n++; } } }
+    if(CLOUD && INSP && up.length) Cloud.saveMany(INSP, up.map(u=>({tid:u.tid,n:u.n,rec:{c:u.rec.c,com:u.rec.com||'',t:u.rec.t||Date.now(),by:u.rec.by||'',...(u.rec.hist?{hist:u.rec.hist}:{})}})));
     if(!S.meta.tecnico && o.meta && o.meta.tecnico) S.meta.tecnico=o.meta.tecnico;
   }catch(err){ toast('Archivo no válido: '+f.name); } }
   e.target.value=''; persist(); render(); toast(`${files.length} respaldo(s) unidos · ${n} equipos actualizados`);
@@ -519,7 +596,11 @@ function sigPad(cv, key){
   const pt=e=>{ const b=cv.getBoundingClientRect(); return [e.clientX-b.left, e.clientY-b.top]; };
   cv.onpointerdown=e=>{ drawing=true; last=pt(e); cv.setPointerCapture(e.pointerId); };
   cv.onpointermove=e=>{ if(!drawing) return; const p=pt(e); ctx.beginPath(); ctx.moveTo(...last); ctx.lineTo(...p); ctx.stroke(); last=p; };
-  const end=()=>{ if(!drawing) return; drawing=false; S.meta[key]=cv.toDataURL('image/png'); persist(); };
+  cv.addEventListener('pointerdown', ()=>{ sigBusy=true; });
+  const end=()=>{ if(!drawing) return; drawing=false; sigBusy=false;
+    // Se guarda a tamaño normal para que sincronice rápido
+    const o=document.createElement('canvas'); o.width=w; o.height=h; o.getContext('2d').drawImage(cv,0,0,w,h);
+    setMeta(key, o.toDataURL('image/png'), 0); flushRefresh(); };
   cv.onpointerup=end; cv.onpointercancel=end;
 }
 
@@ -658,7 +739,97 @@ function render(){
   renderFilters(); renderList();
 }
 $('logo').src='data:image/png;base64,'+LOGO_B64;
+$('logo2').src='data:image/png;base64,'+LOGO_B64;
 render();
+if(CLOUD) startCloud();
+
+/* ---------- Sincronización en tiempo real ---------- */
+// No se redibuja mientras alguien escribe o firma en el Reporte; se hace al terminar
+function softRefresh(){
+  const a=document.activeElement;
+  if(cur.tab==='REP' && (sigBusy || (a && $('view').contains(a) && /INPUT|TEXTAREA/.test(a.tagName)))){ pendingRefresh=true; renderTabs(); return; }
+  clearTimeout(refreshTimer); refreshTimer=setTimeout(refresh, 60);
+}
+function flushRefresh(){ if(pendingRefresh){ pendingRefresh=false; refresh(); } }
+document.addEventListener('focusout', ()=>setTimeout(flushRefresh, 50));
+
+function setNet(online){
+  const el=$('net'); el.classList.remove('loc');
+  el.className='net '+(online?'on':'off');
+  el.textContent= online ? 'En línea · sincronizado' : 'Sin señal · se enviará al volver';
+}
+function cloudError(e){
+  console.error(e);
+  if(e && e.code==='permission-denied') toast('Sin permiso: inicie sesión de nuevo');
+}
+function showGate(id){ ['gateLogin','gateName'].forEach(g=>$(g).classList.toggle('on', g===id)); }
+
+function startCloud(){
+  try{ Cloud.init(CLOUD_CONFIG); }catch(e){ console.error(e); return; }
+  setNet(navigator.onLine);
+  window.addEventListener('offline', ()=>setNet(false));
+  Cloud.onUser(u=>{
+    if(!u){ Cloud.stop(); showGate('gateLogin'); return; }
+    if(!USER){ showGate('gateName'); $('nmInput').focus(); } else showGate(null);
+    followCloud();
+  });
+  $('loginForm').onsubmit=async e=>{ e.preventDefault(); $('lgErr').textContent=''; $('lgBtn').disabled=true;
+    try{ await Cloud.login($('lgEmail').value, $('lgPass').value); }
+    catch(err){ $('lgErr').textContent = /network/.test(err.code||'') ? 'Sin conexión. Intente cuando tenga señal.' : 'Correo o contraseña incorrectos.'; }
+    finally{ $('lgBtn').disabled=false; } };
+  $('nameForm').onsubmit=e=>{ e.preventDefault(); USER=$('nmInput').value.trim(); if(!USER) return;
+    try{ localStorage.setItem(KEY_USER, USER); }catch(_){} showGate(null); refresh(); };
+}
+
+function followCloud(){
+  let first=true;
+  Cloud.follow({
+    onStatus: online=>setNet(online && navigator.onLine),
+    onError: e=>cloudError(e),
+    onNoInspection: async ()=>{
+      // Primera vez: se crea la inspección y se suben las marcas que ya estuvieran en este dispositivo
+      const local=load(); const id=await Cloud.newInspection({ ...local.meta });
+      const up=[]; for(const tid of Object.keys(local.data)) for(const [n,rec] of Object.entries(local.data[tid])) up.push({tid,n,rec});
+      if(up.length) Cloud.saveMany(id, up);
+    },
+    onInspection: id=>{
+      first=true;
+      if(id!==INSP){ INSP=id; S=blank(); persist(); closeSheet(); refresh(); }
+    },
+    onMeta: m=>{
+      if(!m) return;
+      const a=document.activeElement;
+      for(const k of ['fecha','tecnico','encargado','firmaTec','firmaEnc']){
+        if(m[k]===undefined) continue;
+        const editing = a && ((k==='fecha'&&a.id==='mFecha')||(k==='tecnico'&&a.id==='mTec')||(k==='encargado'&&a.id==='mEnc'));
+        if(!editing && !pendingMeta[k]) S.meta[k]=m[k];
+      }
+      persist(); softRefresh();
+    },
+    onEquipos: (changes)=>{
+      const mine=who();
+      if(first) S.data={ DET:{}, ALA:{}, LAM:{} };  // la nube manda: se reconstruye todo en la primera carga
+      for(const ch of changes){
+        const {tid,n}=ch.data; if(!S.data[tid]) continue;
+        if(ch.type==='removed') delete S.data[tid][n];
+        else { const {c,com,t,by,hist}=ch.data; S.data[tid][n]={c,com:com||'',t,by:by||'',...(hist?{hist}:{})}; }
+        const remote = !ch.pending && !first && (ch.data.by||'')!==mine;
+        if(remote){
+          const k=tid+'_'+n; flashing.add(k); setTimeout(()=>flashing.delete(k), 1700);
+          // Si justo tengo abierto ese equipo, aviso que otro lo cambió
+          if(edit && edit.tid===tid && String(edit.n)===String(n)){
+            const eb=$('editbar'); const r=S.data[tid][n];
+            eb.innerHTML = r ? `<b>${esc(r.by||'Otro dispositivo')} acaba de guardar este equipo</b> (${status(r)==='ok'?'✓ todo OK':status(r)==='bad'?'✕ con falla':'incompleto'}${r.com?' — “'+esc(r.com)+'”':''}). Si guarda, se reemplaza con lo suyo. <button class="link" id="useRemote">Ver lo que guardó</button>`
+                             : `<b>Otro dispositivo borró las marcas de este equipo.</b>`;
+            eb.classList.add('on','warn');
+            const ur=$('useRemote'); if(ur) ur.onclick=()=>{ const {tid:t2,n:n2}=edit; closeSheet(); openSheet(t2,+n2); };
+          }
+        }
+      }
+      first=false; persist(); softRefresh();
+    },
+  });
+}
 // Modo app instalada / sin internet (solo cuando está publicada en un servidor https, p. ej. Render)
 if('serviceWorker' in navigator && location.protocol==='https:'){ try{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){} }
 </script>

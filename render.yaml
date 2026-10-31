@@ -4,6 +4,9 @@ services:
     runtime: static
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
+    envVars:
+      - key: FIREBASE_CONFIG   # pegue aquí la configuración web de Firebase (ver README)
+        sync: false
     headers:
       - path: /sw.js
         name: Cache-Control

@@ -1,0 +1,34 @@
+rules_version = '2';
+// Reglas de seguridad de Firestore para Sistema SOS FIRE.
+// Solo los usuarios que SOS FIRE crea en Firebase Authentication pueden leer o escribir.
+// Copie este texto en Firebase → Firestore Database → Reglas → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function logueado() { return request.auth != null; }
+
+    // Puntero a la inspección activa
+    match /app/actual {
+      allow read: if logueado();
+      allow write: if logueado() && request.resource.data.keys().hasOnly(['id']);
+    }
+
+    // Datos del formato (fecha, nombres, firmas)
+    match /inspecciones/{insp} {
+      allow read, write: if logueado();
+
+      // Un documento por equipo: DET_12, ALA_3, LAM_150 ...
+      match /equipos/{equipo} {
+        allow read, delete: if logueado();
+        allow write: if logueado()
+          && request.resource.data.tid in ['DET', 'ALA', 'LAM']
+          && request.resource.data.n is number
+          && request.resource.data.c is list && request.resource.data.c.size() == 4;
+      }
+    }
+
+    // Todo lo demás, cerrado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
