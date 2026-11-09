@@ -12,7 +12,22 @@ service cloud.firestore {
       allow write: if logueado() && request.resource.data.keys().hasOnly(['id']);
     }
 
-    // Datos del formato (fecha, nombres, firmas)
+    // Cuánto tiempo se guardan los reportes
+    match /app/config {
+      allow read: if logueado();
+      allow write: if logueado() && request.resource.data.retencionMeses is number;
+    }
+
+    // Equipos agregados desde la app (no estaban en el Excel)
+    match /catalogo/{equipo} {
+      allow read: if logueado();
+      allow write: if logueado()
+        && request.resource.data.tid in ['DET', 'ALA', 'LAM']
+        && request.resource.data.n is number
+        && request.resource.data.loc is string && request.resource.data.loc.size() > 0;
+    }
+
+    // Datos del formato (fecha, nombres, firmas) y resumen para la lista de reportes
     match /inspecciones/{insp} {
       allow read, write: if logueado();
 

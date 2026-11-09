@@ -6,6 +6,10 @@ App para hacer desde el teléfono la inspección de **detectores de humo**, **al
 
 - Tres pestañas separadas: Detectores (239), Alarmas (89) y Lámparas (205), tomadas del Excel original.
 - Búsqueda rápida sin importar tildes ni mayúsculas: "guardalino 20", "cocina oliva", "145". Con Enter se abre el primer resultado.
+- **Búsqueda por edificio y nivel:** "edificio 1 nivel 3" (o "edif 1 n3", "e1 n3") muestra solo ese edificio y ese nivel, más las gradas que llegan a ese nivel. Entiende "Edif.", "Edifc.", "2 nivel" y los números de cuarto (1207 = edificio 1, nivel 2).
+- **Agregar equipos que no están en el Excel:** botón **+ Agregar detector / alarma / lámpara**. También aparece al final de una búsqueda sin resultados. El equipo recibe el siguiente N°, se inspecciona en ese momento y queda guardado para las próximas visitas y en los reportes (Excel y PDF, al final de su hoja). Si la ubicación se parece a uno existente, la app lo avisa para no duplicar. Los equipos agregados se pueden corregir o eliminar con "Editar ubicación".
+- **Reportes anteriores:** en *Reporte → Reportes anteriores* aparecen las inspecciones por fecha, con filtro por mes. Cada una se puede **ver** (resumen y hallazgos) y **descargar en Excel o PDF**, igual que el día que se hizo.
+- **Borrado automático:** se elige cuánto tiempo guardar (1, 2, 3, 6 o 12 meses; por defecto 3). Las inspecciones más viejas que ese plazo se borran solas, como la grabación de las cámaras de seguridad.
 - Se marca con ✓ / ✕ / N/A por criterio, con comentarios rápidos. El botón **✓ OK** de la lista guarda un equipo en buen estado con un solo toque.
 - Filtros de Pendientes, Con falla y OK, y avance por tipo.
 - **Corregir marcas:** los equipos ya marcados muestran **✎ Editar** para cambiar checks y comentarios. Desde *Reporte → Hallazgos* también se toca una falla para corregirla. Cada guardado tiene **Deshacer** por unos segundos, y el equipo queda señalado como "corregido" (la app guarda las últimas 5 versiones).
@@ -62,6 +66,14 @@ Se hace una sola vez. Es gratis con el plan Spark de Firebase, que alcanza de so
    Toque **Save, rebuild, and deploy**. En el registro debe aparecer `Nube: Firebase proyecto "sos-fire"`.
 
 La primera vez que alguien entre, la app crea la inspección en la nube y sube las marcas que ese dispositivo ya tuviera.
+
+### ¿Cuánto espacio usa?
+
+La app no guarda archivos Excel/PDF en la nube: guarda los **datos** de cada inspección (marcas, comentarios, firmas) y genera el Excel y el PDF al momento de descargarlos, idénticos. Así cada inspección ocupa unos **100 KB**. El plan gratuito de Firestore da 1 GiB, es decir, espacio para miles de inspecciones. Guardar los archivos en Firebase Storage exigiría el plan de pago (Blaze).
+
+### Si ya tenía las reglas de la versión anterior
+
+Vuelva a copiar [`firestore.rules`](firestore.rules) en Firestore → Reglas → Publicar. Las nuevas reglas permiten guardar los equipos agregados (`catalogo`) y el plazo de los reportes (`app/config`).
 
 > La configuración web de Firebase (apiKey, etc.) no es secreta: lo que protege los datos son el inicio de sesión y las reglas del paso 6.
 

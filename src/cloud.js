@@ -5,10 +5,13 @@
 //   app/actual                         { id }  -> inspección activa (todos los dispositivos la siguen)
 //   inspecciones/{id}                  { fecha, tecnico, encargado, firmaTec, firmaEnc, creada }
 //   inspecciones/{id}/equipos/{TIPO_N} { tid, n, c:[...], com, t, by, hist }
+//   catalogo/{TIPO_N}                  { tid, n, loc, creado, by, baja? }  -> equipos agregados desde la app
+//   app/config                         { retencionMeses }                  -> cuánto tiempo se guardan los reportes
 import { initializeApp } from 'firebase/app';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
   doc, collection, setDoc, deleteDoc, onSnapshot, writeBatch, connectFirestoreEmulator,
+  getDoc, getDocs, getDocsFromServer,
 } from 'firebase/firestore';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, connectAuthEmulator,
@@ -63,6 +66,11 @@ function follow(handlers) {
     }, (err) => handlers.onError && handlers.onError(err)));
   }, (err) => handlers.onError && handlers.onError(err));
   unsub.push(top, () => innerUnsub.forEach((u) => u()));
+  if (handlers.onCatalog) unsub.push(onSnapshot(collection(db, 'catalogo'), (qs) => {
+    handlers.onCatalog(qs.docChanges().map((ch) => ({ type: ch.type, data: ch.doc.data() })));
+  }, (err) => handlers.onError && handlers.onError(err)));
+  if (handlers.onConfig) unsub.push(onSnapshot(doc(db, 'app', 'config'), (s) => handlers.onConfig(s.exists() ? s.data() : {}),
+    (err) => handlers.onError && handlers.onError(err)));
 }
 
 // Las escrituras no se esperan: con caché local se aplican al instante y se suben cuando hay señal.
@@ -94,4 +102,29 @@ async function saveMany(id, items) {
   }
 }
 
-window.Cloud = { init, onUser, login, logout, follow, stop, saveEquipo, saveMeta, newInspection, saveMany };
+// ---------- Equipos agregados desde la app ----------
+function saveCatalog(tid, n, item) { return setDoc(doc(db, 'catalogo', key(tid, n)), { tid, n: Number(n), ...item }); }
+
+// ---------- Historial de reportes ----------
+async function getAll(ref) { try { return await getDocsFromServer(ref); } catch (e) { return getDocs(ref); } }
+async function listInspections() {
+  const qs = await getAll(collection(db, 'inspecciones'));
+  return qs.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+async function loadInspection(id) {
+  const m = await getDoc(doc(db, 'inspecciones', id));
+  const qs = await getAll(collection(db, 'inspecciones', id, 'equipos'));
+  return { meta: m.exists() ? m.data() : {}, equipos: qs.docs.map((d) => d.data()) };
+}
+async function deleteInspection(id) {
+  const qs = await getAll(collection(db, 'inspecciones', id, 'equipos'));
+  const refs = qs.docs.map((d) => d.ref);
+  for (let i = 0; i < refs.length; i += 450) {
+    const b = writeBatch(db); refs.slice(i, i + 450).forEach((r) => b.delete(r)); await b.commit();
+  }
+  await deleteDoc(doc(db, 'inspecciones', id));
+}
+const saveConfig = (cfg) => setDoc(doc(db, 'app', 'config'), cfg, { merge: true });
+
+window.Cloud = { init, onUser, login, logout, follow, stop, saveEquipo, saveMeta, newInspection, saveMany,
+  saveCatalog, listInspections, loadInspection, deleteInspection, saveConfig };

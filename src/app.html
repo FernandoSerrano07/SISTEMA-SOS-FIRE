@@ -49,7 +49,7 @@ input,textarea{font:inherit}
 .progress i{display:block;height:100%;background:var(--ok);transition:width .3s}
 
 /* List */
-.list{flex:1;padding:8px 10px 110px}
+.list{flex:1;padding:8px 10px 120px}
 .row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 10px 10px 12px;margin-bottom:7px;min-height:58px}
 .row .num{flex:none;width:44px;text-align:center;font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;color:var(--gray);background:var(--bg);border-radius:8px;padding:6px 0}
 .row .main{flex:1;min-width:0;border:0;background:none;text-align:left;padding:2px 0}
@@ -173,6 +173,35 @@ textarea:focus{border-color:var(--red)}
 .gate p{margin:0 0 14px;color:var(--muted);font-size:13.5px;text-align:center}
 .gate .btn{width:100%;margin-top:4px}
 .gate .err{color:var(--red);font-size:13px;min-height:18px;margin-top:8px;text-align:center}
+.fab{position:fixed;right:16px;bottom:20px;z-index:30;height:52px;border:0;border-radius:26px;background:var(--red);color:#fff;font-weight:800;font-size:15px;padding:0 18px;box-shadow:0 6px 18px rgba(201,0,18,.35)}
+.fab:active{filter:brightness(.92)}
+.sheet.on ~ .fab,.hide{display:none!important}
+.pill.new{background:#E8F0FE;color:#1A56C4}
+.addbig{display:block;width:100%;margin-top:12px;border:1.5px dashed var(--red);background:#fff;color:var(--red);border-radius:12px;padding:14px;font-weight:800}
+.dlg .box.wide{max-width:460px}
+.dlg .box h3{margin:0 0 4px;font-size:17px}
+.dlg .box .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+.sugg{border:1px solid var(--line);border-radius:10px;margin:4px 0 10px;overflow:hidden}
+.sugg .h{font-size:12px;font-weight:700;color:var(--warn);background:#FFF7E6;padding:6px 10px}
+.sugg button{display:flex;gap:8px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:#fff;padding:9px 10px;font-size:14px}
+.sugg button b{flex:none;min-width:34px;color:var(--gray)}
+.shlink{border:0;background:none;color:#1A56C4;font-weight:700;font-size:12px;padding:0;margin-left:4px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;background:#E9E9E7;border-radius:12px;padding:3px;gap:3px}
+.seg2 button{border:0;background:none;border-radius:9px;height:40px;font-weight:700;color:var(--muted)}
+.seg2 button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.hrow{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;background:#fff}
+.hrow .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.hrow .dt{font-weight:800;font-size:15.5px}
+.hrow .meta{font-size:12.5px;color:var(--muted);margin-top:2px}
+.hrow .acts{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;margin-top:10px}
+.hrow .acts .btn{height:42px;font-size:13.5px;padding:0 8px}
+.badge{font-size:11px;font-weight:800;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.badge.cur{background:var(--ok-soft);color:var(--ok)}
+.badge.old{background:var(--na-soft);color:var(--muted)}
+.mhead{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:14px 2px 6px}
+.row2{display:flex;gap:8px;align-items:flex-end}
+.row2 .field{flex:1;margin:0}
+select{height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font:inherit;font-size:15px;background:#fff}
 .editbar.warn{background:#FDECEC;border-color:#F3B7BC;color:#7A000A}
 </style>
 </head>
@@ -201,7 +230,7 @@ textarea:focus{border-color:var(--red)}
 <section class="sheet" id="sheet" aria-modal="true" role="dialog">
   <div class="sh-head">
     <span class="n" id="shN"></span>
-    <div class="t"><b id="shLoc"></b><span id="shType"></span></div>
+    <div class="t"><b id="shLoc"></b><span id="shType"></span><button class="shlink hide" id="shEditDev">Editar ubicación</button></div>
     <button class="x" id="shX" aria-label="Cerrar">×</button>
   </div>
   <div class="sh-body">
@@ -220,6 +249,17 @@ textarea:focus{border-color:var(--red)}
   </div>
 </section>
 
+<button class="fab" id="fab">+ Nuevo</button>
+<div class="dlg" id="addDlg"><form class="box wide" id="addForm">
+  <h3 id="adTitle">Agregar equipo</h3><p class="sub" id="adSub"></p>
+  <div class="field"><label>Ubicación</label><input id="adLoc" autocomplete="off" placeholder="Ej. Bodega de mantenimiento, Edif. 2 Nivel 3 Guardalino 45" required></div>
+  <div id="adSugg"></div>
+  <div class="b" style="display:flex;gap:8px;justify-content:space-between;align-items:center">
+    <button type="button" class="btn ghost" id="adDel" style="color:var(--red)">Eliminar</button>
+    <span style="flex:1"></span>
+    <button type="button" class="btn" id="adNo">Cancelar</button><button type="submit" class="btn pri" id="adOk" style="flex:none">Agregar</button>
+  </div>
+</form></div>
 <div class="toast" id="toast"></div>
 <div class="dlg" id="dlg"><div class="box"><p id="dlgMsg"></p><div class="b"><button class="btn" id="dlgNo">Cancelar</button><button class="btn pri" id="dlgYes">Aceptar</button></div></div></div>
 <div class="busy" id="busy">Generando…</div>
@@ -248,13 +288,13 @@ const CLOUD_CONFIG = /*CLOUD_CONFIG*/null;  // se llena al compilar con la varia
 
 /* ---------- Configuración de cada tipo de equipo (igual al formato Excel) ---------- */
 const TYPES = [
-  { id:'DET', sheet:'DETECTORES', short:'Detectores', title:'DETECTORES DE HUMO',
+  { id:'DET', sheet:'DETECTORES', short:'Detectores', title:'DETECTORES DE HUMO', one:'detector', oneT:'detector de humo', g:'o',
     crit:['ESTADO GENERAL','BATERÍA','COMPLETO / INTEGRIDAD','ESTADO FÍSICO'],
     quick:['Batería baja','Batería reemplazada','Sin batería','Falta tapa','Dañado','Sucio / limpieza','No se encontró'] },
-  { id:'ALA', sheet:'ALARMAS', short:'Alarmas', title:'ALARMAS DE EMERGENCIA',
+  { id:'ALA', sheet:'ALARMAS', short:'Alarmas', title:'ALARMAS DE EMERGENCIA', one:'alarma', oneT:'alarma de emergencia', g:'a',
     crit:['ESTADO GENERAL','ACTIVACIÓN / PRUEBA','COMPLETO','ESTADO FÍSICO'],
     quick:['No activa','Falta llave','Falta vidrio / tapa','Dañada','Requiere reset','No se encontró'] },
-  { id:'LAM', sheet:'LÁMPARAS', short:'Lámparas', title:'LÁMPARAS DE EMERGENCIA',
+  { id:'LAM', sheet:'LÁMPARAS', short:'Lámparas', title:'LÁMPARAS DE EMERGENCIA', one:'lámpara', oneT:'lámpara de emergencia', g:'a',
     crit:['ESTADO GENERAL','ILUMINACIÓN','CONEXIÓN','ESTADO FÍSICO'],
     quick:['No enciende','Batería baja','Foco quemado','Sin conexión','Desconectada','Dañada','No se encontró'] },
 ];
@@ -265,6 +305,13 @@ const KEY = 'sosfire_decameron_v1';
 /* ---------- Estado ---------- */
 const CLOUD = !!(CLOUD_CONFIG && window.Cloud);
 const KEY_CLOUD = 'sosfire_cloud_cache_v1', KEY_USER = 'sosfire_usuario';
+const KEY_CAT = 'sosfire_catalogo_v1', KEY_HIST = 'sosfire_historial_v1', KEY_RET = 'sosfire_retencion';
+const loadJSON = (k, def) => { try{ const v=JSON.parse(localStorage.getItem(k)); return v ?? def; }catch(e){ return def; } };
+const saveJSON = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } };
+// Equipos agregados desde la app (se suman a los del Excel y quedan para las próximas visitas)
+let CAT = Object.assign({ DET:{}, ALA:{}, LAM:{} }, loadJSON(KEY_CAT, {}));
+let catVer = 0;
+let RETENCION = +loadJSON(KEY_RET, 3) || 3;   // meses que se guardan los reportes
 let USER = (()=>{ try{ return localStorage.getItem(KEY_USER)||''; }catch(e){ return ''; } })();
 let INSP = null;          // id de la inspección activa en la nube
 let sigBusy=false, pendingRefresh=false, refreshTimer=null;
@@ -276,7 +323,7 @@ let lastList = [];
 
 function blank(){
   return { meta:{ fecha: today(), tecnico:'', encargado:'', firmaTec:'', firmaEnc:'' },
-           data:{ DET:{}, ALA:{}, LAM:{} }, updated: Date.now() };
+           data:{ DET:{}, ALA:{}, LAM:{} }, creada: Date.now(), updated: Date.now() };
 }
 function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function load(){
@@ -291,7 +338,8 @@ const who = () => USER || S.meta.tecnico || '';
 function putRec(tid, n, rec){
   if(rec) S.data[tid][n]=rec; else delete S.data[tid][n];
   persist();
-  if(CLOUD && INSP) Cloud.saveEquipo(INSP, tid, n, rec||null).catch(e=>cloudError(e));
+  if(CLOUD && INSP){ Cloud.saveEquipo(INSP, tid, n, rec||null).catch(e=>cloudError(e));
+    clearTimeout(putRec._t); putRec._t=setTimeout(()=>{ if(INSP) Cloud.saveMeta(INSP,{ resumen:resumen(S) }).catch(()=>{}); }, 8000); }
 }
 /* Datos del formato (fecha, nombres, firmas): compartidos */
 const metaTimers={};
@@ -319,7 +367,8 @@ function undoFor(tid,n){
   const prev=S.data[tid][n] ? JSON.parse(JSON.stringify(S.data[tid][n])) : null;
   return ()=>{ putRec(tid, n, prev); refresh(); toast(`#${n} restaurado`); };
 }
-function refresh(){ renderTabs(); if(cur.tab==='REP') renderReport(); else { renderFilters(); renderList(); } }
+// En Reportes anteriores no se redibuja con cada cambio en vivo (evita recargar la lista y cerrar el detalle)
+function refresh(){ renderTabs(); if(cur.tab==='REP'){ if(cur.rep!=='hist' && cur.rep!=='det') renderReport(); } else { renderFilters(); renderList(); } }
 function ask(msg, yes='Aceptar'){ return new Promise(r=>{ $('dlgMsg').textContent=msg; $('dlgYes').textContent=yes; $('dlg').classList.add('on');
   const done=v=>{ $('dlg').classList.remove('on'); $('dlgYes').onclick=$('dlgNo').onclick=null; r(v); };
   $('dlgYes').onclick=()=>done(true); $('dlgNo').onclick=()=>done(false); }); }
@@ -330,11 +379,33 @@ function status(rec){
   if(rec.c.some(v=>!v)) return 'part';
   return 'ok';
 }
-function counts(tid){
-  const items=EQUIPOS[TBYID[tid].sheet]; const d=S.data[tid]; let ok=0,bad=0,part=0;
-  for(const [n] of items){ const s=status(d[n]); if(s==='ok')ok++; else if(s==='bad')bad++; else if(s==='part')part++; }
-  return { total:items.length, ok, bad, part, done:ok+bad+part, pend:items.length-ok-bad-part };
+/* Equipos de un tipo: los del Excel + los agregados desde la app.
+   st = una inspección anterior: incluye los agregados que existían en esa fecha */
+const itemsCache={};
+function items(tid, st){
+  const base=EQUIPOS[TBYID[tid].sheet];
+  if(!st || st===S){
+    const c=itemsCache[tid]; if(c && c.v===catVer) return c.list;
+    const extra=Object.values(CAT[tid]||{}).filter(x=>!x.baja).map(x=>[x.n, x.loc, x]);
+    const list=extra.length ? base.concat(extra).sort((a,b)=>a[0]-b[0]) : base;
+    itemsCache[tid]={v:catVer, list}; return list;
+  }
+  const ini=st.creada||0, fin=st.cerrada||Date.now(), d=st.data[tid]||{};
+  const extra=Object.values(CAT[tid]||{}).filter(x=> d[x.n] || ((x.creado||0)<=fin && (!x.baja || (x.bajaT||0)>fin))).map(x=>[x.n, x.loc, x]);
+  return extra.length ? base.concat(extra).sort((a,b)=>a[0]-b[0]) : base;
 }
+const findItem = (tid, n) => items(tid).find(x=>x[0]===n) || (CAT[tid][n] ? [n, CAT[tid][n].loc, CAT[tid][n]] : null);
+function nextN(tid){
+  let m=0; for(const [n] of EQUIPOS[TBYID[tid].sheet]) m=Math.max(m,n);
+  for(const k of Object.keys(CAT[tid]||{})) m=Math.max(m,+k);
+  return m+1;
+}
+function counts(tid, st=S){
+  const list=items(tid, st); const d=st.data[tid]||{}; let ok=0,bad=0,part=0;
+  for(const [n] of list){ const s=status(d[n]); if(s==='ok')ok++; else if(s==='bad')bad++; else if(s==='part')part++; }
+  return { total:list.length, ok, bad, part, done:ok+bad+part, pend:list.length-ok-bad-part };
+}
+function resumen(st=S){ const r={}; for(const t of TYPES){ const c=counts(t.id, st); r[t.id]={total:c.total, ok:c.ok, bad:c.bad, part:c.part, pend:c.pend}; } return r; }
 
 /* ---------- Tabs ---------- */
 function renderTabs(){
@@ -350,19 +421,50 @@ $('tabs').addEventListener('click', e=>{ const b=e.target.closest('[data-tab]');
   cur.tab=b.dataset.tab; cur.limit=60; render(); window.scrollTo(0,0); });
 
 /* ---------- Búsqueda ---------- */
-function search(items, q){
-  const toks = norm(q).split(' ').filter(Boolean);
-  if(!toks.length) return items.map(it=>({it,score:0}));
+/* Lee edificio y niveles de una ubicación ("Edif. 1 Nivel 3", "Chack Balam 2 nivel", "Gradas 1207-1307") */
+function parseLoc(loc){
+  const L=norm(loc);
+  const em=L.match(/\bedi?f\w*\.?\s*(\d{1,2})\b/);
+  let ed = em ? +em[1] : null;
+  // Sin "Edif." pero con número de cuarto (5216): el primer dígito es el edificio
+  if(ed==null){ const rooms=[...L.matchAll(/\b([1-9])[1-9]\d{2}\b/g)].map(m=>+m[1]); if(rooms.length && rooms.every(r=>r===rooms[0])) ed=rooms[0]; }
+  const niv=new Set(); let nivFrom='';
+  for(const m of L.matchAll(/\b(?:nivel|niv|piso)\.?\s*(\d{1,2})\b/g)){ niv.add(+m[1]); nivFrom='nivel'; }
+  if(!niv.size) for(const m of L.matchAll(/\b(\d{1,2})\s*(?:er|do|ro|to|vo|no)?\.?\s*(?:nivel|piso)\b/g)){ niv.add(+m[1]); nivFrom='nivel'; }
+  // Gradas o sin nivel escrito: se deduce del número de cuarto (1207 = edificio 1, nivel 2)
+  if(!niv.size && ed!=null){
+    for(const m of L.matchAll(/\b(\d)(\d)(\d{2})\b/g)) if(+m[1]===ed && +m[2]>0){ niv.add(+m[2]); nivFrom='cuarto'; }
+  }
+  return { ed, niv, nivFrom };
+}
+/* Separa "edificio 1 nivel 3" (también "edif 1 n3", "e1 n3", "2 nivel") del resto de la búsqueda */
+function parseQuery(q){
+  let s=norm(q), ed=null, niv=null;
+  s=s.replace(/\b(?:edificio|edifc|edif|edf|ed|e)\.?\s*(\d{1,2})\b/, (_,d)=>{ ed=+d; return ' '; });
+  s=s.replace(/\b(?:nivel|niv|piso|n|p)\.?\s*(\d{1,2})\b/, (_,d)=>{ niv=+d; return ' '; });
+  if(niv==null) s=s.replace(/\b(\d{1,2})\s*(?:er|do|ro|to|vo|no)?\.?\s*(?:nivel|piso)\b/, (_,d)=>{ niv=+d; return ' '; });
+  const toks=s.split(' ').filter(Boolean).map(t=> /^(edificio|edifc|edf)$/.test(t)?'edif' : t);
+  return { ed, niv, toks };
+}
+function search(list, q){
+  const P=parseQuery(q);
+  if(P.ed==null && P.niv==null && !P.toks.length) return list.map(it=>({it,score:0}));
   const out=[];
-  for(const it of items){
-    const [n,loc]=it; const L=norm(loc); const words=L.split(/[^a-z0-9ñ]+/);
-    let score=0, okAll=true;
-    for(const t of toks){
+  for(const it of list){
+    const [n,loc]=it; const L=norm(loc).replace(/\bedifc?\b/g,'edif'); const words=L.split(/[^a-z0-9ñ]+/);
+    let score=0;
+    if(P.ed!=null || P.niv!=null){
+      const p=it._p || (it._p=parseLoc(loc));
+      if(P.ed!=null){ if(p.ed!==P.ed) continue; score+=5; }
+      if(P.niv!=null){ if(!p.niv.has(P.niv)) continue; score+= p.nivFrom==='nivel'?5:2; }
+    }
+    let okAll=true;
+    for(const t of P.toks){
       const isNum=/^\d+$/.test(t);
-      if(isNum && String(n)===t){ score+= toks.length===1 ? 10 : 2; continue; }
+      if(isNum && String(n)===t){ score+= (P.toks.length===1 && P.ed==null && P.niv==null) ? 10 : 2; continue; }
       if(words.includes(t)){ score+=4; continue; }
       if(words.some(w=>w.startsWith(t))){ score+=2; continue; }
-      if(L.includes(t)){ score+=1; continue; }
+      if(!isNum && L.includes(t)){ score+=1; continue; }
       okAll=false; break;
     }
     if(okAll) out.push({it,score});
@@ -371,11 +473,14 @@ function search(items, q){
   return out;
 }
 function highlight(loc, q){
-  const toks=norm(q).split(' ').filter(t=>t && (!/^\d+$/.test(t)||t.length>1));
-  if(!toks.length) return esc(loc);
-  const N=loc.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); if(N.length!==loc.length) return esc(loc);
+  const P=parseQuery(q); const res=[];
+  for(const t of P.toks){ if(/^\d+$/.test(t)) res.push(new RegExp('(?<![0-9])'+t+'(?![0-9])','g')); else res.push(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g')); }
+  if(P.ed!=null) res.push(new RegExp('edi?f\\w*\\.?\\s*'+P.ed+'(?![0-9])','g'));
+  if(P.niv!=null) res.push(new RegExp('(?:nivel|niv|piso)\\.?\\s*'+P.niv+'(?![0-9])|(?<![0-9])'+P.niv+'\\s*(?:nivel|piso)','g'));
+  if(!res.length) return esc(loc);
+  const N=loc.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); if(N.length!==loc.length) return esc(loc);
   const marks=new Array(loc.length).fill(false);
-  for(const t of toks){ const re=/^\d+$/.test(t)? new RegExp('(?<![0-9])'+t+'(?![0-9])','g') : new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'); let m; while((m=re.exec(N))){ for(let k=m.index;k<m.index+m[0].length;k++)marks[k]=true; if(!m[0].length) re.lastIndex++; } }
+  for(const re of res){ let m; while((m=re.exec(N))){ for(let k=m.index;k<m.index+m[0].length;k++)marks[k]=true; if(!m[0].length) re.lastIndex++; } }
   let h='',open=false;
   for(let i=0;i<loc.length;i++){ if(marks[i]&&!open){h+='<mark>';open=true;} if(!marks[i]&&open){h+='</mark>';open=false;} h+=esc(loc[i]); }
   return h+(open?'</mark>':'');
@@ -408,31 +513,37 @@ function stLine0(rec, t, s){
 }
 function renderList(){
   const t=TBYID[cur.tab]; const d=S.data[cur.tab];
-  let res = search(EQUIPOS[t.sheet], cur.q);
+  let res = search(items(cur.tab), cur.q);
   if(cur.filter!=='all') res = res.filter(r=>status(d[r.it[0]])===cur.filter);
   lastList = res.map(r=>r.it);
+  $('fab').classList.toggle('hide', !!cur.q);
   const shown = res.slice(0,cur.limit);
-  if(!res.length){ $('view').innerHTML=`<div class="list"><div class="empty">Sin resultados${cur.q?` para “${esc(cur.q)}”`:''}.</div></div>`; return; }
+  const addBtn = `<button class="addbig" data-add="1">+ ${cur.q?`Agregar “${esc(cur.q)}” como ${t.one} nuev${t.g}`:`Agregar ${t.one} que no está en la lista`}</button>`;
+  if(!res.length){ $('view').innerHTML=`<div class="list"><div class="empty">Sin resultados${cur.q?` para “${esc(cur.q)}”`:''}.<br><span class="note">Si el equipo existe pero no está en el sistema, agréguelo:</span>${addBtn}</div></div>`; return; }
   $('view').innerHTML = `<div class="list" id="list">${shown.map(({it})=>{ const [n,loc]=it; const rec=d[n]; const s=status(rec);
     return `<div class="row ${s==='ok'?'ok':s==='bad'?'bad':''} ${flashing.has(cur.tab+'_'+n)?'flash':''}">
       <span class="num">${n}</span>
-      <button class="main" data-open="${n}"><div class="loc">${highlight(loc,cur.q)}</div><div class="st">${stLine(rec,t)}</div></button>
+      <button class="main" data-open="${n}"><div class="loc">${highlight(loc,cur.q)}</div><div class="st">${it[2]?'<span class="pill new">Nuevo</span>':''}${stLine(rec,t)}</div></button>
       ${s==='pend'?`<button class="quick" data-ok="${n}" aria-label="Marcar todo OK">✓ OK</button>`:`<button class="quick edit" data-open="${n}" aria-label="Editar">✎ Editar</button>`}
     </div>`; }).join('')}
-    ${res.length>cur.limit?`<button class="more" id="more">Ver ${Math.min(60,res.length-cur.limit)} más (${res.length-cur.limit} restantes)</button>`:''}</div>`;
+    ${res.length>cur.limit?`<button class="more" id="more">Ver ${Math.min(60,res.length-cur.limit)} más (${res.length-cur.limit} restantes)</button>`:''}
+    ${cur.q && res.length<=cur.limit ? addBtn : ''}</div>`;
 }
 $('view').addEventListener('click', e=>{
   const o=e.target.closest('[data-open]'); if(o){ openSheet(cur.tab, +o.dataset.open); return; }
   const k=e.target.closest('[data-ok]'); if(k){ const n=+k.dataset.ok; const u=undoFor(cur.tab,n); saveRec(cur.tab, n, ['ok','ok','ok','ok'], ''); toast(`#${n} · Todo OK`, u); afterSave(); return; }
   const f=e.target.closest('[data-fix]'); if(f){ const [tid,n]=f.dataset.fix.split(':'); openSheet(tid,+n); return; }
+  if(e.target.closest('[data-add]')){ openAdd(cur.tab, cur.q); return; }
   if(e.target.id==='more'){ cur.limit+=60; renderList(); }
 });
 
 /* ---------- Ficha de inspección ---------- */
 function openSheet(tid, n){
-  const t=TBYID[tid]; const loc=EQUIPOS[t.sheet].find(x=>x[0]===n)[1]; const rec=S.data[tid][n];
+  const t=TBYID[tid]; const it=findItem(tid,n); if(!it) return; const loc=it[1]; const rec=S.data[tid][n];
   edit={ tid, n, c: rec? rec.c.slice() : [null,null,null,null], com: rec? (rec.com||'') : '' };
   $('shN').textContent='#'+n; $('shLoc').textContent=loc; $('shType').textContent=t.title + (rec&&rec.t?` · guardado ${new Date(rec.t).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}${rec.by?' por '+rec.by:''}`:'');
+  const nuevo=it[2]; $('shEditDev').classList.toggle('hide', !nuevo);
+  if(nuevo) $('shType').textContent += ` · agregado${nuevo.by?' por '+nuevo.by:''} ${new Date(nuevo.creado).toLocaleDateString('es')}`;
   $('com').value=edit.com; $('hint').textContent=''; $('com').classList.remove('check');
   edit.wasBad = status(rec)==='bad';
   const eb=$('editbar');
@@ -509,21 +620,61 @@ $('shSave').onclick=()=>{
 $('shClear').onclick=async()=>{ if(!(await ask('¿Borrar la inspección de este equipo?','Borrar'))) return; const {tid,n}=edit; const u=undoFor(tid,n); putRec(tid, n, null); closeSheet(); refresh(); toast(`#${n} sin marcar`, u); };
 $('shSaveNext').onclick=()=>{
   const {tid,n}=edit; if(!(edit.c.every(v=>!v) && !$('com').value.trim())) commitEdit();
-  const items=EQUIPOS[TBYID[tid].sheet]; const idx=items.findIndex(x=>x[0]===n);
-  let next=null; for(let k=idx+1;k<items.length;k++){ if(status(S.data[tid][items[k][0]])==='pend'){ next=items[k][0]; break; } }
+  const list=items(tid); const idx=list.findIndex(x=>x[0]===n);
+  let next=null; for(let k=idx+1;k<list.length;k++){ if(status(S.data[tid][list[k][0]])==='pend'){ next=list[k][0]; break; } }
   refresh();
   if(next) openSheet(tid,next); else { closeSheet(); toast('No hay más pendientes después de este'); }
 };
 
+/* ---------- Agregar equipo que no está en el Excel ---------- */
+let addCtx=null;
+function saveCatItem(tid, n, item){
+  CAT[tid][n]=item; catVer++; saveJSON(KEY_CAT, CAT);
+  if(CLOUD) Cloud.saveCatalog(tid, n, item).catch(e=>cloudError(e));
+}
+function openAdd(tid, prefill='', editN=null){
+  const t=TBYID[tid]; addCtx={tid, editN};
+  const ed = editN!=null ? CAT[tid][editN] : null;
+  $('adTitle').textContent = ed ? `Editar ${t.one} #${editN}` : `Agregar ${t.oneT}`;
+  $('adSub').textContent = ed ? 'Corrija la ubicación o elimine el equipo si se agregó por error.' : `Se agregará como N° ${nextN(tid)} y queda guardado para las próximas visitas.`;
+  $('adLoc').value = ed ? ed.loc : prefill; $('adOk').textContent = ed ? 'Guardar' : 'Agregar e inspeccionar';
+  $('adDel').classList.toggle('hide', !ed);
+  renderSugg(); $('addDlg').classList.add('on'); setTimeout(()=>$('adLoc').focus(), 50);
+}
+function closeAdd(){ $('addDlg').classList.remove('on'); addCtx=null; }
+// Mientras escribe, muestra equipos parecidos para no duplicar
+function renderSugg(){
+  const v=$('adLoc').value.trim(); if(!addCtx || addCtx.editN!=null || v.length<3){ $('adSugg').innerHTML=''; return; }
+  const r=search(items(addCtx.tid), v).slice(0,3);
+  $('adSugg').innerHTML = r.length ? `<div class="sugg"><div class="h">¿Ya existe? Tóquelo para abrirlo en vez de agregarlo:</div>${r.map(({it})=>`<button type="button" data-sg="${it[0]}"><b>#${it[0]}</b>${esc(it[1])}</button>`).join('')}</div>` : '';
+}
+$('adLoc').addEventListener('input', renderSugg);
+$('adSugg').addEventListener('click', e=>{ const b=e.target.closest('[data-sg]'); if(!b) return; const tid=addCtx.tid; closeAdd(); openSheet(tid, +b.dataset.sg); });
+$('adNo').onclick=closeAdd;
+$('addForm').onsubmit=e=>{ e.preventDefault(); if(!addCtx) return;
+  const loc=$('adLoc').value.trim().replace(/\s+/g,' '); if(!loc) return; const {tid, editN}=addCtx;
+  if(editN!=null){ saveCatItem(tid, editN, { ...CAT[tid][editN], loc }); closeAdd(); closeSheet(); refresh(); openSheet(tid, editN); toast(`#${editN} actualizado`); return; }
+  const n=nextN(tid); saveCatItem(tid, n, { tid, n, loc, creado:Date.now(), by:who() });
+  closeAdd(); qIn.value=''; cur.q=''; cur.filter='all'; $('searchBox').classList.remove('has'); refresh();
+  toast(`${TBYID[tid].one[0].toUpperCase()+TBYID[tid].one.slice(1)} #${n} agregad${TBYID[tid].g}`); openSheet(tid, n);
+};
+$('adDel').onclick=async()=>{ if(!addCtx) return; const {tid, editN}=addCtx;
+  if(!(await ask(`¿Eliminar ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${CAT[tid][editN].loc}”? Ya no aparecerá en la lista ni en los próximos reportes.`,'Eliminar'))) return;
+  saveCatItem(tid, editN, { ...CAT[tid][editN], baja:true, bajaT:Date.now() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); };
+$('fab').onclick=()=>openAdd(cur.tab, cur.q);
+$('shEditDev').onclick=()=>{ if(edit) openAdd(edit.tid, '', edit.n); };
+
 /* ---------- Reporte ---------- */
+const segRep = () => `<div class="seg2"><button data-rep="actual" class="${cur.rep!=='hist'?'on':''}">Inspección actual</button><button data-rep="hist" class="${cur.rep==='hist'?'on':''}">Reportes anteriores</button></div>`;
 function renderReport(){
+  if(cur.rep==='hist' || cur.rep==='det'){ cur.rep='hist'; renderHistory(); return; }
   const m=S.meta;
   const st=TYPES.map(t=>{ const c=counts(t.id); const p=x=>(x/c.total*100).toFixed(1)+'%';
     return `<div class="stat"><div class="k">${t.short}</div><div class="v">${c.done}<span style="font-size:13px;color:var(--muted)">/${c.total}</span></div>
       <div class="bar"><i style="width:${p(c.ok)};background:var(--ok)"></i><i style="width:${p(c.bad)};background:var(--red)"></i><i style="width:${p(c.part)};background:#E0A100"></i></div>
       <div class="d">${c.ok} OK · ${c.bad} falla · ${c.pend} pend.</div></div>`; }).join('');
-  const fails=[]; for(const t of TYPES){ for(const [n,loc] of EQUIPOS[t.sheet]){ const r=S.data[t.id][n]; if(status(r)==='bad') fails.push({t,n,loc,r}); } }
-  $('view').innerHTML=`<div class="rep">
+  const fails=fallas(S);
+  $('view').innerHTML=`<div class="rep">${segRep()}
     <div class="card"><h3>Avance de la inspección</h3><div class="stats">${st}</div></div>
     <div class="card"><h3>Datos del formato</h3>
       <div class="field"><label>Fecha de inspección</label><input type="date" id="mFecha" value="${esc(m.fecha)}"></div>
@@ -548,7 +699,7 @@ function renderReport(){
     <div class="card"><h3>${CLOUD?'Respaldo':'Varios teléfonos / respaldo'}</h3>
       <p class="note" style="margin-top:0">${CLOUD?'Opcional: guarde una copia en archivo, o suba respaldos de la versión anterior de la app.':'Si varios técnicos inspeccionan a la vez, cada uno exporta su respaldo y la encargada los une aquí. Se conserva la marca más reciente de cada equipo.'}</p>
       <div class="actions"><button class="btn" id="bkOut">Exportar respaldo</button><button class="btn" id="bkIn">Unir respaldos</button></div>
-      <div style="margin-top:8px"><button class="btn ghost" id="reset" style="width:100%">${CLOUD?'Iniciar nueva inspección':'Nueva inspección (borrar todo)'}</button></div>
+      <div style="margin-top:8px"><button class="btn ghost" id="reset" style="width:100%">Iniciar nueva inspección</button></div>
     </div>
   </div>`;
   $('mFecha').onchange=e=>{ setMeta('fecha', e.target.value, 0); renderTabs(); };
@@ -558,8 +709,8 @@ function renderReport(){
     $('logout').onclick=async()=>{ if(!(await ask('¿Cerrar sesión en este dispositivo?','Cerrar sesión'))) return; Cloud.stop(); await Cloud.logout(); }; }
   sigPad($('sigTec'),'firmaTec'); sigPad($('sigEnc'),'firmaEnc');
   $('view').querySelectorAll('[data-sigclr]').forEach(b=>b.onclick=()=>{ setMeta(b.dataset.sigclr, '', 0); renderReport(); });
-  $('dlXlsx').onclick=()=>run(exportXlsx);
-  $('dlPdf').onclick=()=>run(exportPdf);
+  $('dlXlsx').onclick=()=>run(()=>exportXlsx(S));
+  $('dlPdf').onclick=()=>run(()=>exportPdf(S));
   $('bkOut').onclick=()=>{ const name=`respaldo_${(S.meta.tecnico||'tecnico').replace(/\s+/g,'_')}_${S.meta.fecha}.json`;
     saveFile(name, new Blob([JSON.stringify(S)],{type:'application/json'})); };
   $('bkIn').onclick=()=>$('fileImport').click();
@@ -567,13 +718,131 @@ function renderReport(){
     if(CLOUD){
       if(!(await ask('Se empezará una inspección nueva en blanco en TODOS los dispositivos. La inspección actual queda guardada en la nube. Descargue el Excel/PDF antes si lo necesita.','Iniciar nueva'))) return;
       $('busy').classList.add('on');
-      try{ await Cloud.newInspection({ fecha:today(), tecnico:S.meta.tecnico||'', encargado:S.meta.encargado||'', firmaTec:'', firmaEnc:'' }); toast('Inspección nueva lista'); }
+      try{
+        if(INSP) Cloud.saveMeta(INSP, { resumen:resumen(S), cerrada:Date.now() }).catch(()=>{});
+        await Cloud.newInspection({ fecha:today(), tecnico:S.meta.tecnico||'', encargado:S.meta.encargado||'', firmaTec:'', firmaEnc:'' });
+        toast('Inspección nueva lista · la anterior quedó en Reportes anteriores'); limpiarViejos();
+      }
       catch(e){ cloudError(e); } finally{ $('busy').classList.remove('on'); }
       return;
     }
-    if(!(await ask('Se borrarán todas las marcas, comentarios y firmas de esta inspección. Exporte un respaldo antes si lo necesita.','Borrar todo'))) return;
-    S=blank(); persist(); render(); toast('Inspección nueva lista'); };
+    if(!(await ask('Se empezará una inspección nueva en blanco. La actual queda guardada en “Reportes anteriores” de este dispositivo.','Iniciar nueva'))) return;
+    const hist=loadJSON(KEY_HIST, []); hist.push({ id:'L'+(S.creada||Date.now()), meta:S.meta, data:S.data, creada:S.creada||S.updated, cerrada:Date.now(), resumen:resumen(S) });
+    if(!saveJSON(KEY_HIST, hist)) toast('Memoria llena: descargue y borre reportes viejos');
+    const keep={tecnico:S.meta.tecnico, encargado:S.meta.encargado}; S=blank(); Object.assign(S.meta, keep);
+    persist(); render(); limpiarViejos(); toast('Inspección nueva lista · la anterior quedó en Reportes anteriores'); };
 }
+function fallas(st){ const out=[]; for(const t of TYPES) for(const [n,loc] of items(t.id, st)){ const r=(st.data[t.id]||{})[n]; if(status(r)==='bad') out.push({t,n,loc,r}); } return out; }
+
+/* ---------- Reportes anteriores ---------- */
+const histCache=new Map();
+async function histList(){
+  let list=[];
+  if(CLOUD){ list=(await Cloud.listInspections()).map(d=>({ id:d.id, meta:d, resumen:d.resumen, creada:d.creada||idTime(d.id), cerrada:d.cerrada })); }
+  else list=loadJSON(KEY_HIST, []).map(h=>({ id:h.id, meta:h.meta, resumen:h.resumen, creada:h.creada, cerrada:h.cerrada }));
+  const curId = CLOUD ? INSP : 'actual';
+  list=list.filter(h=>h.id!==curId);
+  list.push({ id:curId, meta:S.meta, resumen:resumen(S), creada:S.creada, actual:true });
+  return list.sort((a,b)=> (b.meta.fecha||'').localeCompare(a.meta.fecha||'') || (b.creada||0)-(a.creada||0));
+}
+function idTime(id){ const t=Date.parse(String(id).replace(/T(\d\d)-(\d\d)-(\d\d)-(\d+)Z$/,'T$1:$2:$3.$4Z')); return isNaN(t)?0:t; }
+async function histLoad(id){
+  if(id==='actual' || (CLOUD && id===INSP)) return S;
+  if(histCache.has(id)) return histCache.get(id);
+  let st;
+  if(CLOUD){ const r=await Cloud.loadInspection(id); const data={DET:{},ALA:{},LAM:{}};
+    for(const e of r.equipos){ if(data[e.tid]) data[e.tid][e.n]={c:e.c, com:e.com||'', t:e.t, by:e.by||''}; }
+    st={ id, meta:{ fecha:r.meta.fecha||'', tecnico:r.meta.tecnico||'', encargado:r.meta.encargado||'', firmaTec:r.meta.firmaTec||'', firmaEnc:r.meta.firmaEnc||'' }, data, creada:r.meta.creada||idTime(id), cerrada:r.meta.cerrada }; }
+  else { const h=loadJSON(KEY_HIST, []).find(x=>x.id===id); if(!h) throw new Error('No se encontró el reporte'); st={...h}; }
+  histCache.set(id, st); return st;
+}
+async function histDelete(id){
+  if(CLOUD) await Cloud.deleteInspection(id); else saveJSON(KEY_HIST, loadJSON(KEY_HIST, []).filter(h=>h.id!==id));
+  histCache.delete(id);
+}
+function setRetencion(m){
+  RETENCION=m; saveJSON(KEY_RET, m);
+  if(CLOUD) Cloud.saveConfig({ retencionMeses:m }).catch(e=>cloudError(e));
+}
+// Como las cámaras de seguridad: se borran solos los reportes más viejos que el plazo elegido
+let limpiando=false;
+async function limpiarViejos(){
+  if(limpiando) return; limpiando=true;
+  try{
+    const limite=Date.now()-RETENCION*30.44*864e5; let n=0;
+    for(const h of await histList()){ if(h.actual) continue; const t=h.cerrada||h.creada||0; if(t && t<limite){ await histDelete(h.id); n++; } }
+    if(n) toast(`${n} reporte(s) con más de ${RETENCION} meses se borraron`);
+    return n;
+  }catch(e){ console.error(e); } finally{ limpiando=false; }
+}
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const nombreMes = ym => { const [y,m]=ym.split('-'); return `${MESES[+m-1]} ${y}`; };
+function resumenTxt(r){
+  if(!r) return 'Sin resumen';
+  let tot=0,ok=0,bad=0,pend=0; for(const k in r){ tot+=r[k].total; ok+=r[k].ok; bad+=r[k].bad; pend+=r[k].pend+(r[k].part||0); }
+  return `${tot} equipos · ${ok} OK · ${bad} con falla · ${pend} pendientes`;
+}
+async function renderHistory(){
+  const v=$('view');
+  v.innerHTML=`<div class="rep">${segRep()}<div class="card"><p class="note" style="margin:0">Cargando reportes…</p></div></div>`;
+  let list;
+  try{ list=await histList(); }catch(e){ v.innerHTML=`<div class="rep">${segRep()}<div class="card"><p class="note" style="margin:0">No se pudieron cargar los reportes. Revise la conexión e intente de nuevo.</p></div></div>`; return; }
+  if(cur.tab!=='REP' || cur.rep!=='hist') return;  // el usuario ya cambió de pantalla
+  const meses=[...new Set(list.map(h=>(h.meta.fecha||'').slice(0,7)).filter(Boolean))];
+  const fil = cur.hMes ? list.filter(h=>(h.meta.fecha||'').startsWith(cur.hMes)) : list;
+  const kb = Math.round(list.length*110);  // ~110 KB por inspección (equipos + firmas)
+  let html='', last='';
+  for(const h of fil){
+    const ym=(h.meta.fecha||'').slice(0,7); if(ym!==last){ html+=`<div class="mhead">${ym?nombreMes(ym):'Sin fecha'}</div>`; last=ym; }
+    html+=`<div class="hrow"><div class="top"><div><div class="dt">${fmtFecha(h.meta.fecha)||'—'}</div>
+      <div class="meta">${esc(h.meta.tecnico||'Sin técnico')}${h.meta.encargado?' · Encargado: '+esc(h.meta.encargado):''}</div>
+      <div class="meta">${resumenTxt(h.resumen)}</div></div>
+      <span class="badge ${h.actual?'cur':'old'}">${h.actual?'En curso':'Cerrado'}</span></div>
+      <div class="acts"><button class="btn" data-hv="${esc(h.id)}">👁 Ver</button><button class="btn xl" data-hx="${esc(h.id)}">⬇ Excel</button><button class="btn pdf" data-hp="${esc(h.id)}">⬇ PDF</button></div></div>`;
+  }
+  v.innerHTML=`<div class="rep">${segRep()}
+    <div class="card"><h3>Buscar reporte</h3>
+      <div class="row2"><div class="field"><label>Mes</label><select id="hMes"><option value="">Todos los meses</option>${meses.map(m=>`<option value="${m}" ${cur.hMes===m?'selected':''}>${nombreMes(m)}</option>`).join('')}</select></div></div>
+    </div>
+    <div>${html || '<div class="card"><p class="note" style="margin:0">No hay reportes en ese mes.</p></div>'}</div>
+    <div class="card"><h3>¿Cuánto tiempo se guardan?</h3>
+      <div class="field"><label>Guardar reportes por</label><select id="hRet">${[1,2,3,6,12].map(m=>`<option value="${m}" ${RETENCION===m?'selected':''}>${m} ${m===1?'mes':'meses'}</option>`).join('')}</select></div>
+      <p class="note" style="margin:0">Al pasar ese plazo, el reporte más viejo se borra solo para dejar espacio, como las cámaras de seguridad. Descargue antes los que quiera conservar en la computadora.<br>
+      ${list.length} reporte(s) guardado(s) · aprox. ${kb>=1024?(kb/1024).toFixed(1)+' MB':kb+' KB'} ${CLOUD?'de 1 024 MB gratis en Firebase':'en este dispositivo'}.</p>
+    </div></div>`;
+  $('hMes').onchange=e=>{ cur.hMes=e.target.value; renderHistory(); };
+  $('hRet').onchange=async e=>{ const m=+e.target.value; const viejos=list.filter(h=>!h.actual && (h.cerrada||h.creada||0) < Date.now()-m*30.44*864e5).length;
+    if(viejos && !(await ask(`Con ${m} ${m===1?'mes':'meses'} se borrarán ahora ${viejos} reporte(s) más viejos. ¿Continuar?`,'Sí, cambiar'))){ e.target.value=RETENCION; return; }
+    setRetencion(m); await limpiarViejos(); renderHistory(); };
+}
+async function renderHistDetail(id){
+  cur.rep='det'; const v=$('view'); v.innerHTML=`<div class="rep"><div class="card"><p class="note" style="margin:0">Abriendo reporte…</p></div></div>`;
+  let st; try{ st=await histLoad(id); }catch(e){ toast('No se pudo abrir el reporte'); cur.rep='hist'; renderHistory(); return; }
+  if(cur.tab!=='REP' || cur.rep!=='det') return;
+  const st2=TYPES.map(t=>{ const c=counts(t.id, st); const p=x=>(x/c.total*100).toFixed(1)+'%';
+    return `<div class="stat"><div class="k">${t.short}</div><div class="v">${c.done}<span style="font-size:13px;color:var(--muted)">/${c.total}</span></div>
+      <div class="bar"><i style="width:${p(c.ok)};background:var(--ok)"></i><i style="width:${p(c.bad)};background:var(--red)"></i><i style="width:${p(c.part)};background:#E0A100"></i></div>
+      <div class="d">${c.ok} OK · ${c.bad} falla · ${c.pend} pend.</div></div>`; }).join('');
+  const f=fallas(st);
+  v.innerHTML=`<div class="rep">
+    <button class="btn" id="hBack" style="align-self:flex-start">‹ Volver a reportes</button>
+    <div class="card"><h3>Reporte del ${fmtFecha(st.meta.fecha)}</h3>
+      <p class="note" style="margin:0 0 10px">Técnico: ${esc(st.meta.tecnico||'—')} · Encargado: ${esc(st.meta.encargado||'—')}</p>
+      <div class="stats">${st2}</div>
+      <div class="actions" style="margin-top:12px"><button class="btn xl" data-hx="${esc(id)}">⬇ Excel</button><button class="btn pdf" data-hp="${esc(id)}">⬇ PDF</button></div></div>
+    <div class="card"><h3>Hallazgos (${f.length})</h3>
+      ${f.length? f.map(x=>`<div class="fail" style="cursor:default"><span class="tg">${x.t.short.slice(0,3).toUpperCase()} ${x.n}</span><div><b>${esc(x.loc)}</b><br><span class="note">${esc(x.r.c.map((v,i)=>v==='x'?x.t.crit[i].toLowerCase():null).filter(Boolean).join(', '))}${x.r.com?' — '+esc(x.r.com):''}</span></div></div>`).join('') : '<p class="note" style="margin:0">Sin fallas registradas.</p>'}
+    </div></div>`;
+  $('hBack').onclick=()=>{ cur.rep='hist'; renderHistory(); };
+}
+// Botones de la lista de reportes
+$('view').addEventListener('click', e=>{
+  const sg=e.target.closest('[data-rep]'); if(sg){ cur.rep=sg.dataset.rep; renderReport(); window.scrollTo(0,0); return; }
+  const hv=e.target.closest('[data-hv]'); if(hv){ renderHistDetail(hv.dataset.hv); window.scrollTo(0,0); return; }
+  const hx=e.target.closest('[data-hx]'); if(hx){ run(async()=>exportXlsx(await histLoad(hx.dataset.hx))); return; }
+  const hp=e.target.closest('[data-hp]'); if(hp){ run(async()=>exportPdf(await histLoad(hp.dataset.hp))); return; }
+});
+
 async function run(fn){ $('busy').classList.add('on'); try{ await fn(); }catch(e){ console.error(e); toast('No se pudo generar: '+(e.message||e)); } finally{ $('busy').classList.remove('on'); } }
 
 $('fileImport').onchange=async e=>{
@@ -616,26 +885,34 @@ async function saveFile(name, blob){
   setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 4000); toast('Descargando '+name);
 }
 function b64ToBuf(b64){ const s=atob(b64); const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i); return u.buffer; }
-const fileBase = () => `Inspeccion_Decameron_${S.meta.fecha||today()}`;
+const fileBase = (st=S) => `Inspeccion_Decameron_${st.meta.fecha||today()}`;
 
 /* ---------- Excel: se llena el formato original ---------- */
 // ExcelJS comparte objetos de estilo entre celdas: se clona antes de modificar para no alterar el resto del formato
 function setCell(cell, value, patch){ cell.style = JSON.parse(JSON.stringify(cell.style||{})); if(patch) Object.assign(cell.style, patch); cell.value = value; }
-async function exportXlsx(){
+async function exportXlsx(st=S){
   const wb=new ExcelJS.Workbook(); await wb.xlsx.load(b64ToBuf(TEMPLATE_B64));
-  const sigTec = S.meta.firmaTec ? wb.addImage({base64:S.meta.firmaTec, extension:'png'}) : null;
-  const sigEnc = S.meta.firmaEnc ? wb.addImage({base64:S.meta.firmaEnc, extension:'png'}) : null;
+  const sigTec = st.meta.firmaTec ? wb.addImage({base64:st.meta.firmaTec, extension:'png'}) : null;
+  const sigEnc = st.meta.firmaEnc ? wb.addImage({base64:st.meta.firmaEnc, extension:'png'}) : null;
   for(const t of TYPES){
     const ws=wb.getWorksheet(t.sheet); if(!ws) continue;
     // Limpia marcas sueltas fuera del formato
     for(const r of [6,7]) for(const c of ['I','J','K','L','M']){ const cell=ws.getCell(c+r); cell.value=null; cell.style={}; }
-    setCell(ws.getCell('A4'), `Fecha de inspección: ${fmtFecha(S.meta.fecha)}`);
-    setCell(ws.getCell('C4'), `Nombre técnico SOS FIRE: ${S.meta.tecnico||''}`);
-    setCell(ws.getCell('A5'), `Nombre del encargado DECAMERON: ${S.meta.encargado||''}`);
+    setCell(ws.getCell('A4'), `Fecha de inspección: ${fmtFecha(st.meta.fecha)}`);
+    setCell(ws.getCell('C4'), `Nombre técnico SOS FIRE: ${st.meta.tecnico||''}`);
+    setCell(ws.getCell('A5'), `Nombre del encargado DECAMERON: ${st.meta.encargado||''}`);
     if(sigTec) ws.addImage(sigTec,{ tl:{col:6.05,row:3.08}, ext:{width:130,height:44}, editAs:'oneCell' });
     if(sigEnc) ws.addImage(sigEnc,{ tl:{col:6.05,row:4.08}, ext:{width:130,height:44}, editAs:'oneCell' });
     const rowOf={}; ws.eachRow((row,rn)=>{ if(rn>=8){ const v=row.getCell(1).value; if(typeof v==='number') rowOf[v]=rn; } });
-    for(const [n,rec] of Object.entries(S.data[t.id])){
+    // Equipos agregados desde la app: filas nuevas al final, con el mismo formato
+    const lastRn=Math.max(...Object.values(rowOf)); let rn2=lastRn;
+    for(const [n,loc,nuevo] of items(t.id, st)){
+      if(!nuevo || rowOf[n]) continue;
+      rn2++; const src=ws.getRow(lastRn), row=ws.getRow(rn2); row.height=src.height;
+      for(let c=1;c<=8;c++){ const cell=row.getCell(c); cell.style=JSON.parse(JSON.stringify(src.getCell(c).style||{})); cell.value=null; }
+      row.getCell(1).value=n; row.getCell(3).value=loc; rowOf[n]=rn2;
+    }
+    for(const [n,rec] of Object.entries(st.data[t.id])){
       const rn=rowOf[n]; if(!rn) continue; const row=ws.getRow(rn);
       rec.c.forEach((v,i)=>{ if(!v){ row.getCell(4+i).value=null; return; }
         const patch={ font:{ name:'Aptos', size: v==='na'?10:14, bold:true, color:{argb: v==='ok'?'FF167C3A': v==='x'?'FFC90012':'FF7A7A7A'} },
@@ -649,11 +926,11 @@ async function exportXlsx(){
     ws.headerFooter = { oddFooter: `&L&8${t.title}&R&8Página &P de &N` };
   }
   const buf=await wb.xlsx.writeBuffer();
-  await saveFile(fileBase()+'.xlsx', new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  await saveFile(fileBase(st)+'.xlsx', new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
 }
 
 /* ---------- PDF con el mismo diseño ---------- */
-async function exportPdf(){
+async function exportPdf(st=S){
   const { jsPDF } = window.jspdf; const doc=new jsPDF({unit:'mm', format:'letter', orientation:'portrait', compress:true});
   const W=doc.internal.pageSize.getWidth(), M=10, IW=W-2*M;
   const RED=[201,0,18], GRAY=[74,74,74], LG=[242,242,242];
@@ -671,8 +948,8 @@ async function exportPdf(){
       doc.setFillColor(...LG); doc.rect(M,y,IW,6,'F'); doc.setTextColor(85); doc.setFont('helvetica','italic'); doc.setFontSize(7.5);
       doc.text('Marcación: OK = cumple · X = falla · N/A = no aplica. Ampliar cualquier hallazgo en COMENTARIOS.', M+2, y+4); y+=6;
       doc.setDrawColor(200); doc.setLineWidth(0.2); doc.setTextColor(40); doc.setFontSize(8.5);
-      const cells=[[M,y,58,12,'Fecha de inspección:',fmtFecha(S.meta.fecha)],[M+58,y,72,12,'Nombre técnico SOS FIRE:',S.meta.tecnico],[M+130,y,IW-130,12,'Firma técnico:','',S.meta.firmaTec],
-                   [M,y+12,130,12,'Nombre del encargado DECAMERON:',S.meta.encargado],[M+130,y+12,IW-130,12,'Firma:','',S.meta.firmaEnc]];
+      const cells=[[M,y,58,12,'Fecha de inspección:',fmtFecha(st.meta.fecha)],[M+58,y,72,12,'Nombre técnico SOS FIRE:',st.meta.tecnico],[M+130,y,IW-130,12,'Firma técnico:','',st.meta.firmaTec],
+                   [M,y+12,130,12,'Nombre del encargado DECAMERON:',st.meta.encargado],[M+130,y+12,IW-130,12,'Firma:','',st.meta.firmaEnc]];
       for(const [x,yy,w,h,l,v,sig] of cells){ doc.rect(x,yy,w,h); doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(90); doc.text(l,x+2,yy+4);
         if(v){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(20); doc.text(String(v),x+2,yy+9.5,{maxWidth:w-4}); }
         if(sig){ try{ doc.addImage(sig,'PNG',x+22,yy+0.8,(h-1.6)*2.6,h-1.6,undefined,'FAST'); }catch(e){} } }
@@ -685,13 +962,13 @@ async function exportPdf(){
   doc.addImage(logo,'PNG',M,10,52,20,'logo','FAST');
   doc.setTextColor(...RED); doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.text('Reporte de inspección', M, 42);
   doc.setTextColor(40); doc.setFontSize(11); doc.setFont('helvetica','normal');
-  doc.text(`Proyecto Decameron Salinitas · Fecha: ${fmtFecha(S.meta.fecha)}`, M, 49);
-  doc.text(`Técnico SOS FIRE: ${S.meta.tecnico||'—'}    Encargado DECAMERON: ${S.meta.encargado||'—'}`, M, 55);
-  const sumRows=TYPES.map(t=>{const c=counts(t.id); return [t.title, c.total, c.ok, c.bad, c.part, c.pend, (c.done/c.total*100).toFixed(0)+'%'];});
+  doc.text(`Proyecto Decameron Salinitas · Fecha: ${fmtFecha(st.meta.fecha)}`, M, 49);
+  doc.text(`Técnico SOS FIRE: ${st.meta.tecnico||'—'}    Encargado DECAMERON: ${st.meta.encargado||'—'}`, M, 55);
+  const sumRows=TYPES.map(t=>{const c=counts(t.id, st); return [t.title, c.total, c.ok, c.bad, c.part, c.pend, (c.done/c.total*100).toFixed(0)+'%'];});
   doc.autoTable({ startY:62, margin:{left:M,right:M}, head:[['Equipo','Total','OK','Con falla','Incompleto','Pendiente','Avance']], body:sumRows,
     headStyles:{fillColor:RED,textColor:255,fontStyle:'bold',halign:'center'}, bodyStyles:{halign:'center'}, columnStyles:{0:{halign:'left',fontStyle:'bold'}},
     styles:{fontSize:9.5,cellPadding:2.4,lineColor:[210,210,210],lineWidth:0.2} });
-  const fails=[]; for(const t of TYPES) for(const [n,loc] of EQUIPOS[t.sheet]){ const r=S.data[t.id][n]; if(status(r)==='bad') fails.push([t.short, n, loc, r.c.map((v,i)=>v==='x'?t.crit[i]:null).filter(Boolean).join(', '), r.com||'']); }
+  const fails=[]; for(const t of TYPES) for(const [n,loc] of items(t.id, st)){ const r=st.data[t.id][n]; if(status(r)==='bad') fails.push([t.short, n, loc, r.c.map((v,i)=>v==='x'?t.crit[i]:null).filter(Boolean).join(', '), r.com||'']); }
   doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(40); doc.text(`Hallazgos (${fails.length})`, M, doc.lastAutoTable.finalY+10);
   doc.autoTable({ startY:doc.lastAutoTable.finalY+13, margin:{left:M,right:M}, head:[['Tipo','N°','Ubicación','Criterio con falla','Comentarios']],
     body: fails.length?fails:[['—','','Sin fallas registradas','','']],
@@ -701,8 +978,8 @@ async function exportPdf(){
   // Una sección por tipo, igual que las hojas del Excel
   for(const t of TYPES){
     doc.addPage(); const startY=header(t,true);
-    const d=S.data[t.id];
-    const body=EQUIPOS[t.sheet].map(([n,loc])=>{ const r=d[n]; return [n,'',loc, ...(r?r.c:[null,null,null,null]).map(v=>v||''), r&&r.com||'']; });
+    const d=st.data[t.id];
+    const body=items(t.id, st).map(([n,loc])=>{ const r=d[n]; return [n,'',loc, ...(r?r.c:[null,null,null,null]).map(v=>v||''), r&&r.com||'']; });
     doc.autoTable({
       startY, margin:{left:M,right:M,top:31,bottom:14},
       head:[[{content:'DATOS DEL EQUIPO',colSpan:3,styles:{fillColor:GRAY}},{content:'CRITERIOS DE INSPECCIÓN',colSpan:5,styles:{fillColor:GRAY}}],
@@ -724,9 +1001,9 @@ async function exportPdf(){
   }
   const pages=doc.getNumberOfPages();
   for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(130);
-    doc.text(`SOS FIRE · Inspección Decameron Salinitas · ${fmtFecha(S.meta.fecha)}`, M, doc.internal.pageSize.getHeight()-6);
+    doc.text(`SOS FIRE · Inspección Decameron Salinitas · ${fmtFecha(st.meta.fecha)}`, M, doc.internal.pageSize.getHeight()-6);
     doc.text(`Página ${i} de ${pages}`, W-M, doc.internal.pageSize.getHeight()-6, {align:'right'}); }
-  await saveFile(fileBase()+'.pdf', doc.output('blob'));
+  await saveFile(fileBase(st)+'.pdf', doc.output('blob'));
 }
 
 /* ---------- Render principal ---------- */
@@ -734,6 +1011,7 @@ function render(){
   renderTabs();
   const isRep=cur.tab==='REP';
   $('searchwrap').style.display=isRep?'none':'';
+  $('fab').classList.toggle('hide', isRep); $('fab').textContent='+ '+(isRep?'':'Agregar '+TBYID[cur.tab].one);
   if(isRep){ renderReport(); return; }
   qIn.placeholder = cur.tab==='DET' ? 'Buscar: guardalino 20, cocina, 145…' : cur.tab==='ALA' ? 'Buscar: lobby, edif. 1 nivel 2, 45…' : 'Buscar: gradas, oliva, exit, 120…';
   renderFilters(); renderList();
@@ -741,7 +1019,7 @@ function render(){
 $('logo').src='data:image/png;base64,'+LOGO_B64;
 $('logo2').src='data:image/png;base64,'+LOGO_B64;
 render();
-if(CLOUD) startCloud();
+if(CLOUD) startCloud(); else setTimeout(limpiarViejos, 1500);
 
 /* ---------- Sincronización en tiempo real ---------- */
 // No se redibuja mientras alguien escribe o firma en el Reporte; se hace al terminar
@@ -791,11 +1069,18 @@ function followCloud(){
       const local=load(); const id=await Cloud.newInspection({ ...local.meta });
       const up=[]; for(const tid of Object.keys(local.data)) for(const [n,rec] of Object.entries(local.data[tid])) up.push({tid,n,rec});
       if(up.length) Cloud.saveMany(id, up);
+      for(const tid of Object.keys(CAT)) for(const [n,it] of Object.entries(CAT[tid])) Cloud.saveCatalog(tid, n, it).catch(()=>{});
     },
     onInspection: id=>{
-      first=true;
+      first=true; setTimeout(limpiarViejos, 5000);
       if(id!==INSP){ INSP=id; S=blank(); persist(); closeSheet(); refresh(); }
     },
+    onCatalog: changes=>{
+      for(const ch of changes){ const {tid,n}=ch.data; if(!CAT[tid]) continue;
+        if(ch.type==='removed') delete CAT[tid][n]; else CAT[tid][n]={...ch.data}; }
+      catVer++; saveJSON(KEY_CAT, CAT); softRefresh();
+    },
+    onConfig: c=>{ if(c && c.retencionMeses){ RETENCION=+c.retencionMeses; saveJSON(KEY_RET, RETENCION); } },
     onMeta: m=>{
       if(!m) return;
       const a=document.activeElement;
