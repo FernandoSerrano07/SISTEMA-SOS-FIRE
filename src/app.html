@@ -230,7 +230,7 @@ select{height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 1
 <section class="sheet" id="sheet" aria-modal="true" role="dialog">
   <div class="sh-head">
     <span class="n" id="shN"></span>
-    <div class="t"><b id="shLoc"></b><span id="shType"></span><button class="shlink hide" id="shEditDev">Editar ubicación</button></div>
+    <div class="t"><b id="shLoc"></b><span id="shType"></span><button class="shlink hide" id="shEditDev">✎ Cambiar nombre</button></div>
     <button class="x" id="shX" aria-label="Cerrar">×</button>
   </div>
   <div class="sh-body">
@@ -382,19 +382,31 @@ function status(rec){
 /* Equipos de un tipo: los del Excel + los agregados desde la app.
    st = una inspección anterior: incluye los agregados que existían en esa fecha */
 const itemsCache={};
+// Cada elemento: [N°, ubicación, datos si es agregado desde la app, nombres anteriores (para buscar)]
+const BASELOC = Object.fromEntries(TYPES.map(t=>[t.id, Object.fromEntries(EQUIPOS[t.sheet].map(([n,l])=>[n,l]))]));
+const isBase = (tid, n) => BASELOC[tid][n] !== undefined;
+// Nombre que tenía el equipo en una fecha (los reportes anteriores conservan el nombre de su momento)
+function nameAt(x, fin){ if(fin!=null && x.prev) for(const p of x.prev) if((p.hasta||0) > fin) return p.loc; return x.loc; }
+const alias = x => x && x.prev ? x.prev.map(p=>p.loc).join(' ') : '';
 function items(tid, st){
-  const base=EQUIPOS[TBYID[tid].sheet];
-  if(!st || st===S){
-    const c=itemsCache[tid]; if(c && c.v===catVer) return c.list;
-    const extra=Object.values(CAT[tid]||{}).filter(x=>!x.baja).map(x=>[x.n, x.loc, x]);
-    const list=extra.length ? base.concat(extra).sort((a,b)=>a[0]-b[0]) : base;
-    itemsCache[tid]={v:catVer, list}; return list;
+  const cur0 = !st || st===S;
+  if(cur0){ const c=itemsCache[tid]; if(c && c.v===catVer) return c.list; }
+  const fin = cur0 ? null : (st.cerrada||Date.now()), d = cur0 ? {} : (st.data[tid]||{});
+  const cat=CAT[tid]||{}, list=[];
+  for(const it of EQUIPOS[TBYID[tid].sheet]){
+    const o=cat[it[0]];
+    list.push(o && o.base ? [it[0], nameAt(o, fin), null, alias(o)] : it);
   }
-  const ini=st.creada||0, fin=st.cerrada||Date.now(), d=st.data[tid]||{};
-  const extra=Object.values(CAT[tid]||{}).filter(x=> d[x.n] || ((x.creado||0)<=fin && (!x.baja || (x.bajaT||0)>fin))).map(x=>[x.n, x.loc, x]);
-  return extra.length ? base.concat(extra).sort((a,b)=>a[0]-b[0]) : base;
+  for(const x of Object.values(cat)){
+    if(x.base || isBase(tid, x.n)) continue;
+    const vis = cur0 ? !x.baja : (d[x.n] || ((x.creado||0)<=fin && (!x.baja || (x.bajaT||0)>fin)));
+    if(vis) list.push([x.n, nameAt(x, fin), x, alias(x)]);
+  }
+  list.sort((a,b)=>a[0]-b[0]);
+  if(cur0) itemsCache[tid]={v:catVer, list};
+  return list;
 }
-const findItem = (tid, n) => items(tid).find(x=>x[0]===n) || (CAT[tid][n] ? [n, CAT[tid][n].loc, CAT[tid][n]] : null);
+const findItem = (tid, n) => items(tid).find(x=>x[0]===n) || (CAT[tid][n] && !CAT[tid][n].base ? [n, CAT[tid][n].loc, CAT[tid][n]] : null);
 function nextN(tid){
   let m=0; for(const [n] of EQUIPOS[TBYID[tid].sheet]) m=Math.max(m,n);
   for(const k of Object.keys(CAT[tid]||{})) m=Math.max(m,+k);
@@ -451,7 +463,7 @@ function search(list, q){
   if(P.ed==null && P.niv==null && !P.toks.length) return list.map(it=>({it,score:0}));
   const out=[];
   for(const it of list){
-    const [n,loc]=it; const L=norm(loc).replace(/\bedifc?\b/g,'edif'); const words=L.split(/[^a-z0-9ñ]+/);
+    const [n,loc]=it; const L=norm(loc+(it[3]?' '+it[3]:'')).replace(/\bedifc?\b/g,'edif'); const words=L.split(/[^a-z0-9ñ]+/);
     let score=0;
     if(P.ed!=null || P.niv!=null){
       const p=it._p || (it._p=parseLoc(loc));
@@ -542,8 +554,9 @@ function openSheet(tid, n){
   const t=TBYID[tid]; const it=findItem(tid,n); if(!it) return; const loc=it[1]; const rec=S.data[tid][n];
   edit={ tid, n, c: rec? rec.c.slice() : [null,null,null,null], com: rec? (rec.com||'') : '' };
   $('shN').textContent='#'+n; $('shLoc').textContent=loc; $('shType').textContent=t.title + (rec&&rec.t?` · guardado ${new Date(rec.t).toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})}${rec.by?' por '+rec.by:''}`:'');
-  const nuevo=it[2]; $('shEditDev').classList.toggle('hide', !nuevo);
+  const nuevo=it[2]; $('shEditDev').classList.remove('hide'); $('shEditDev').textContent='✎ Cambiar nombre';
   if(nuevo) $('shType').textContent += ` · agregado${nuevo.by?' por '+nuevo.by:''} ${new Date(nuevo.creado).toLocaleDateString('es')}`;
+  const ov=CAT[tid][n]; if(ov && ov.prev && ov.prev.length) $('shType').textContent += ` · antes: “${ov.prev[ov.prev.length-1].loc}”`;
   $('com').value=edit.com; $('hint').textContent=''; $('com').classList.remove('check');
   edit.wasBad = status(rec)==='bad';
   const eb=$('editbar');
@@ -634,11 +647,17 @@ function saveCatItem(tid, n, item){
 }
 function openAdd(tid, prefill='', editN=null){
   const t=TBYID[tid]; addCtx={tid, editN};
-  const ed = editN!=null ? CAT[tid][editN] : null;
-  $('adTitle').textContent = ed ? `Editar ${t.one} #${editN}` : `Agregar ${t.oneT}`;
-  $('adSub').textContent = ed ? 'Corrija la ubicación o elimine el equipo si se agregó por error.' : `Se agregará como N° ${nextN(tid)} y queda guardado para las próximas visitas.`;
-  $('adLoc').value = ed ? ed.loc : prefill; $('adOk').textContent = ed ? 'Guardar' : 'Agregar e inspeccionar';
-  $('adDel').classList.toggle('hide', !ed);
+  const editing = editN!=null, base = editing && isBase(tid, editN), ov = editing ? CAT[tid][editN] : null;
+  const actual = editing ? (findItem(tid, editN)||[])[1] : '';
+  $('adTitle').textContent = editing ? `Cambiar nombre · ${t.one} #${editN}` : `Agregar ${t.oneT}`;
+  $('adSub').textContent = !editing ? `Se agregará como N° ${nextN(tid)} y queda guardado para las próximas visitas.`
+    : (base ? `Nombre en el Excel original: “${BASELOC[tid][editN]}”. ` : 'Corrija el nombre o elimine el equipo si se agregó por error. ')
+      + 'El nombre nuevo aparece en todos los dispositivos y en los próximos reportes; los reportes anteriores conservan el nombre que tenía.';
+  $('adLoc').value = editing ? actual : prefill; $('adOk').textContent = editing ? 'Guardar' : 'Agregar e inspeccionar';
+  // Equipo del Excel: se puede volver al nombre original. Equipo agregado: se puede eliminar.
+  const restaurar = base && ov && ov.loc !== BASELOC[tid][editN];
+  $('adDel').textContent = base ? 'Volver al original' : 'Eliminar';
+  $('adDel').classList.toggle('hide', !editing || (base && !restaurar));
   renderSugg(); $('addDlg').classList.add('on'); setTimeout(()=>$('adLoc').focus(), 50);
 }
 function closeAdd(){ $('addDlg').classList.remove('on'); addCtx=null; }
@@ -653,12 +672,22 @@ $('adSugg').addEventListener('click', e=>{ const b=e.target.closest('[data-sg]')
 $('adNo').onclick=closeAdd;
 $('addForm').onsubmit=e=>{ e.preventDefault(); if(!addCtx) return;
   const loc=$('adLoc').value.trim().replace(/\s+/g,' '); if(!loc) return; const {tid, editN}=addCtx;
-  if(editN!=null){ saveCatItem(tid, editN, { ...CAT[tid][editN], loc }); closeAdd(); closeSheet(); refresh(); openSheet(tid, editN); toast(`#${editN} actualizado`); return; }
+  if(editN!=null){ renombrar(tid, editN, loc); return; }
   const n=nextN(tid); saveCatItem(tid, n, { tid, n, loc, creado:Date.now(), by:who() });
   closeAdd(); qIn.value=''; cur.q=''; cur.filter='all'; $('searchBox').classList.remove('has'); refresh();
   toast(`${TBYID[tid].one[0].toUpperCase()+TBYID[tid].one.slice(1)} #${n} agregad${TBYID[tid].g}`); openSheet(tid, n);
 };
+// Cambia el nombre guardando el anterior (para los reportes viejos y para que se pueda buscar por el nombre antiguo)
+function renombrar(tid, n, loc){
+  const actual=(findItem(tid, n)||[])[1];
+  if(loc===actual){ closeAdd(); return; }
+  const base=isBase(tid, n), o=CAT[tid][n] || { tid, n:Number(n), base:true, loc:BASELOC[tid][n] };
+  const prev=(o.prev||[]).concat([{ loc:actual, hasta:Date.now() }]).slice(-10);
+  saveCatItem(tid, n, { ...o, ...(base?{base:true}:{}), loc, prev, renombrado:Date.now(), renBy:who() });
+  closeAdd(); closeSheet(); refresh(); openSheet(tid, n); toast(`#${n} ahora se llama “${loc}”`);
+}
 $('adDel').onclick=async()=>{ if(!addCtx) return; const {tid, editN}=addCtx;
+  if(isBase(tid, editN)){ if(!(await ask(`¿Volver al nombre original “${BASELOC[tid][editN]}”?`,'Volver al original'))) return; renombrar(tid, editN, BASELOC[tid][editN]); return; }
   if(!(await ask(`¿Eliminar ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${CAT[tid][editN].loc}”? Ya no aparecerá en la lista ni en los próximos reportes.`,'Eliminar'))) return;
   saveCatItem(tid, editN, { ...CAT[tid][editN], baja:true, bajaT:Date.now() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); };
 $('fab').onclick=()=>openAdd(cur.tab, cur.q);
@@ -907,7 +936,8 @@ async function exportXlsx(st=S){
     // Equipos agregados desde la app: filas nuevas al final, con el mismo formato
     const lastRn=Math.max(...Object.values(rowOf)); let rn2=lastRn;
     for(const [n,loc,nuevo] of items(t.id, st)){
-      if(!nuevo || rowOf[n]) continue;
+      if(rowOf[n]){ const c=ws.getRow(rowOf[n]).getCell(3); if(String(c.value??'').trim()!==loc) setCell(c, loc); continue; }
+      if(!nuevo) continue;
       rn2++; const src=ws.getRow(lastRn), row=ws.getRow(rn2); row.height=src.height;
       for(let c=1;c<=8;c++){ const cell=row.getCell(c); cell.style=JSON.parse(JSON.stringify(src.getCell(c).style||{})); cell.value=null; }
       row.getCell(1).value=n; row.getCell(3).value=loc; rowOf[n]=rn2;
