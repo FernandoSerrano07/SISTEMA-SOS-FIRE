@@ -676,9 +676,13 @@ $('adNo').onclick=closeAdd;
 $('addForm').onsubmit=e=>{ e.preventDefault(); if(!addCtx) return;
   const loc=$('adLoc').value.trim().replace(/\s+/g,' '); if(!loc) return; const {tid, editN}=addCtx;
   if(editN!=null){ renombrar(tid, editN, loc); return; }
-  const n=nextN(tid); saveCatItem(tid, n, { tid, n, loc, creado:Date.now(), by:who() });
-  closeAdd(); qIn.value=''; cur.q=''; cur.filter='all'; $('searchBox').classList.remove('has'); refresh();
-  toast(`${TBYID[tid].one[0].toUpperCase()+TBYID[tid].one.slice(1)} #${n} agregad${TBYID[tid].g}`); openSheet(tid, n);
+  const item={ tid, loc, creado:Date.now(), by:who() };
+  const listo=n=>{ CAT[tid][n]={ ...item, tid, n }; catVer++; saveJSON(KEY_CAT, CAT);
+    closeAdd(); qIn.value=''; cur.q=''; cur.filter='all'; $('searchBox').classList.remove('has'); refresh();
+    toast(`${TBYID[tid].one[0].toUpperCase()+TBYID[tid].one.slice(1)} #${n} agregad${TBYID[tid].g}`); openSheet(tid, n); };
+  if(CLOUD){ $('adOk').disabled=true;
+    Cloud.addCatalog(tid, nextN(tid), item).then(listo).catch(err=>{ cloudError(err); toast('No se pudo agregar. Revise la señal e intente de nuevo.'); }).finally(()=>{ $('adOk').disabled=false; }); }
+  else { const n=nextN(tid); saveCatItem(tid, n, { ...item, n }); listo(n); }
 };
 // Cambia el nombre guardando el anterior (para los reportes viejos y para que se pueda buscar por el nombre antiguo)
 function renombrar(tid, n, loc){
@@ -1099,7 +1103,7 @@ function startCloud(){
 }
 
 function followCloud(){
-  let first=true;
+  let first=true, catSync=false;
   Cloud.follow({
     onStatus: online=>setNet(online && navigator.onLine),
     onError: e=>cloudError(e),
@@ -1114,7 +1118,10 @@ function followCloud(){
       first=true; setTimeout(limpiarViejos, 5000);
       if(id!==INSP){ INSP=id; S=blank(); persist(); closeSheet(); refresh(); }
     },
-    onCatalog: changes=>{
+    onCatalog: (changes, fromCache)=>{
+      if(!fromCache && !catSync){ catSync=true; const enNube=new Set(changes.map(ch=>ch.data.tid+'_'+ch.data.n));
+        // equipos agregados en este teléfono que nunca llegaron a la nube (por ejemplo, agregados antes de la sincronización o sin señal)
+        for(const tid of Object.keys(CAT)) for(const [n,it] of Object.entries(CAT[tid])) if(!enNube.has(tid+'_'+n) && !it.base && it.loc) Cloud.saveCatalog(tid, n, it).catch(()=>{}); }
       for(const ch of changes){ const {tid,n}=ch.data; if(!CAT[tid]) continue;
         if(ch.type==='removed') delete CAT[tid][n]; else CAT[tid][n]={...ch.data}; }
       catVer++; saveJSON(KEY_CAT, CAT); softRefresh();

@@ -11,7 +11,7 @@ import { initializeApp } from 'firebase/app';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
   doc, collection, setDoc, deleteDoc, onSnapshot, writeBatch, connectFirestoreEmulator,
-  getDoc, getDocs, getDocsFromServer,
+  getDoc, getDocs, getDocsFromServer, runTransaction,
 } from 'firebase/firestore';
 import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, connectAuthEmulator,
@@ -67,7 +67,7 @@ function follow(handlers) {
   }, (err) => handlers.onError && handlers.onError(err));
   unsub.push(top, () => innerUnsub.forEach((u) => u()));
   if (handlers.onCatalog) unsub.push(onSnapshot(collection(db, 'catalogo'), (qs) => {
-    handlers.onCatalog(qs.docChanges().map((ch) => ({ type: ch.type, data: ch.doc.data() })));
+    handlers.onCatalog(qs.docChanges().map((ch) => ({ type: ch.type, data: ch.doc.data() })), qs.metadata.fromCache);
   }, (err) => handlers.onError && handlers.onError(err)));
   if (handlers.onConfig) unsub.push(onSnapshot(doc(db, 'app', 'config'), (s) => handlers.onConfig(s.exists() ? s.data() : {}),
     (err) => handlers.onError && handlers.onError(err)));
@@ -105,6 +105,26 @@ async function saveMany(id, items) {
 // ---------- Equipos agregados desde la app ----------
 function saveCatalog(tid, n, item) { return setDoc(doc(db, 'catalogo', key(tid, n)), { tid, n: Number(n), ...item }); }
 
+// Agrega un equipo nuevo con un número que nadie más esté usando (si dos técnicos agregan a la vez, cada uno recibe el suyo).
+// Sin señal no se puede revisar a los demás: se usa un número alto al azar para no pisar a nadie y se sube después.
+async function addCatalog(tid, minN, item) {
+  const online = new Promise((resolve, reject) => {
+    runTransaction(db, async (tx) => {
+      let n = minN;
+      while ((await tx.get(doc(db, 'catalogo', key(tid, n)))).exists()) n++;
+      tx.set(doc(db, 'catalogo', key(tid, n)), { tid, n, ...item });
+      return n;
+    }).then(resolve, reject);
+  });
+  try { return await Promise.race([online, new Promise((_, rej) => setTimeout(() => rej(new Error('offline')), 4000))]); }
+  catch (e) {
+    if (e && e.code === 'permission-denied') throw e;
+    const n = 10000 + Math.floor(Math.random() * 89999);
+    await Promise.race([setDoc(doc(db, 'catalogo', key(tid, n)), { tid, n, ...item }), new Promise((r) => setTimeout(r, 1500))]);
+    return n;
+  }
+}
+
 // ---------- Historial de reportes ----------
 async function getAll(ref) { try { return await getDocsFromServer(ref); } catch (e) { return getDocs(ref); } }
 async function listInspections() {
@@ -127,4 +147,4 @@ async function deleteInspection(id) {
 const saveConfig = (cfg) => setDoc(doc(db, 'app', 'config'), cfg, { merge: true });
 
 window.Cloud = { init, onUser, login, logout, follow, stop, saveEquipo, saveMeta, newInspection, saveMany,
-  saveCatalog, listInspections, loadInspection, deleteInspection, saveConfig };
+  saveCatalog, addCatalog, listInspections, loadInspection, deleteInspection, saveConfig };
