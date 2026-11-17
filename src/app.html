@@ -256,6 +256,7 @@ select{height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 1
   <div id="adSugg"></div>
   <div class="b" style="display:flex;gap:8px;justify-content:space-between;align-items:center">
     <button type="button" class="btn ghost" id="adDel" style="color:var(--red)">Eliminar</button>
+    <button type="button" class="btn ghost hide" id="adElim" style="color:var(--red)">Eliminar equipo</button>
     <span style="flex:1"></span>
     <button type="button" class="btn" id="adNo">Cancelar</button><button type="submit" class="btn pri" id="adOk" style="flex:none">Agregar</button>
   </div>
@@ -395,6 +396,7 @@ function items(tid, st){
   const cat=CAT[tid]||{}, list=[];
   for(const it of EQUIPOS[TBYID[tid].sheet]){
     const o=cat[it[0]];
+    if(o && o.base && o.baja){ const vis = cur0 ? false : (d[it[0]] || !o.bajaT || o.bajaT>fin); if(!vis) continue; }
     list.push(o && o.base ? [it[0], nameAt(o, fin), null, alias(o)] : it);
   }
   for(const x of Object.values(cat)){
@@ -658,6 +660,7 @@ function openAdd(tid, prefill='', editN=null){
   const restaurar = base && ov && ov.loc !== BASELOC[tid][editN];
   $('adDel').textContent = base ? 'Volver al original' : 'Eliminar';
   $('adDel').classList.toggle('hide', !editing || (base && !restaurar));
+  $('adElim').classList.toggle('hide', !editing || !base);
   renderSugg(); $('addDlg').classList.add('on'); setTimeout(()=>$('adLoc').focus(), 50);
 }
 function closeAdd(){ $('addDlg').classList.remove('on'); addCtx=null; }
@@ -690,6 +693,10 @@ $('adDel').onclick=async()=>{ if(!addCtx) return; const {tid, editN}=addCtx;
   if(isBase(tid, editN)){ if(!(await ask(`¿Volver al nombre original “${BASELOC[tid][editN]}”?`,'Volver al original'))) return; renombrar(tid, editN, BASELOC[tid][editN]); return; }
   if(!(await ask(`¿Eliminar ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${CAT[tid][editN].loc}”? Ya no aparecerá en la lista ni en los próximos reportes.`,'Eliminar'))) return;
   saveCatItem(tid, editN, { ...CAT[tid][editN], baja:true, bajaT:Date.now() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); };
+$('adElim').onclick=async()=>{ if(!addCtx) return; const {tid, editN}=addCtx; const it=findItem(tid, editN); if(!it) return;
+  if(!(await ask(`¿Eliminar definitivamente ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${it[1]}”? Ya no aparecerá en la lista ni en los próximos reportes (los reportes anteriores lo conservan).`,'Eliminar'))) return;
+  const o=CAT[tid][editN] || { tid, n:Number(editN), loc:BASELOC[tid][editN] };
+  saveCatItem(tid, editN, { ...o, base:true, baja:true, bajaT:Date.now(), bajaBy:who() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); };
 $('fab').onclick=()=>openAdd(cur.tab, cur.q);
 $('shEditDev').onclick=()=>{ if(edit) openAdd(edit.tid, '', edit.n); };
 
