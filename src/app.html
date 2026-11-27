@@ -396,12 +396,12 @@ function items(tid, st){
   const cat=CAT[tid]||{}, list=[];
   for(const it of EQUIPOS[TBYID[tid].sheet]){
     const o=cat[it[0]];
-    if(o && o.base && o.baja){ const vis = cur0 ? false : (d[it[0]] || !o.bajaT || o.bajaT>fin); if(!vis) continue; }
+    if(o && o.base && o.baja && !(!cur0 && d[it[0]])) continue; // eliminado: solo queda si en ese reporte tiene marcas
     list.push(o && o.base ? [it[0], nameAt(o, fin), null, alias(o)] : it);
   }
   for(const x of Object.values(cat)){
     if(x.base || isBase(tid, x.n)) continue;
-    const vis = cur0 ? !x.baja : (d[x.n] || ((x.creado||0)<=fin && (!x.baja || (x.bajaT||0)>fin)));
+    const vis = cur0 ? !x.baja : (d[x.n] || ((x.creado||0)<=fin && !x.baja));
     if(vis) list.push([x.n, nameAt(x, fin), x, alias(x)]);
   }
   list.sort((a,b)=>a[0]-b[0]);
@@ -698,7 +698,7 @@ $('adDel').onclick=async()=>{ if(!addCtx) return; const {tid, editN}=addCtx;
   if(!(await ask(`¿Eliminar ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${CAT[tid][editN].loc}”? Ya no aparecerá en la lista ni en los próximos reportes.`,'Eliminar'))) return;
   saveCatItem(tid, editN, { ...CAT[tid][editN], baja:true, bajaT:Date.now() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); };
 async function eliminarEquipo(tid, editN){ const it=findItem(tid, editN); if(!it) return;
-  if(!(await ask(`¿Eliminar definitivamente ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${it[1]}”? Ya no aparecerá en la lista ni en los próximos reportes (los reportes anteriores lo conservan).`,'Eliminar'))) return;
+  if(!(await ask(`¿Eliminar definitivamente ${TBYID[tid].g==='a'?'la':'el'} ${TBYID[tid].one} #${editN} “${it[1]}”? Ya no aparecerá en la lista ni en los reportes (en los anteriores solo queda si tiene marcas).`,'Eliminar'))) return;
   const o=CAT[tid][editN] || { tid, n:Number(editN), loc:BASELOC[tid][editN] };
   saveCatItem(tid, editN, { ...o, ...(isBase(tid, editN)?{base:true}:{}), baja:true, bajaT:Date.now(), bajaBy:who() }); closeAdd(); closeSheet(); refresh(); toast(`#${editN} eliminad${TBYID[tid].g}`); }
 $('adElim').onclick=()=>{ if(addCtx) eliminarEquipo(addCtx.tid, addCtx.editN); };
@@ -945,10 +945,15 @@ async function exportXlsx(st=S){
     setCell(ws.getCell('A5'), `Nombre del encargado DECAMERON: ${st.meta.encargado||''}`);
     if(sigTec) ws.addImage(sigTec,{ tl:{col:6.05,row:3.08}, ext:{width:130,height:44}, editAs:'oneCell' });
     if(sigEnc) ws.addImage(sigEnc,{ tl:{col:6.05,row:4.08}, ext:{width:130,height:44}, editAs:'oneCell' });
-    const rowOf={}; ws.eachRow((row,rn)=>{ if(rn>=8){ const v=row.getCell(1).value; if(typeof v==='number') rowOf[v]=rn; } });
+    const list=items(t.id, st), vis=new Set(list.map(x=>x[0]));
+    const scan=()=>{ const m={}; ws.eachRow((row,rn)=>{ if(rn>=8){ const v=row.getCell(1).value; if(typeof v==='number') m[v]=rn; } }); return m; };
+    // Equipos del Excel eliminados en la app: se quitan sus filas (de abajo hacia arriba para no mover las demás)
+    const quitar=Object.entries(scan()).filter(([n])=>!vis.has(+n)).map(([,rn])=>rn).sort((a,b)=>b-a);
+    for(const rn of quitar) ws.spliceRows(rn, 1);
+    const rowOf=scan();
     // Equipos agregados desde la app: filas nuevas al final, con el mismo formato
-    const lastRn=Math.max(...Object.values(rowOf)); let rn2=lastRn;
-    for(const [n,loc,nuevo] of items(t.id, st)){
+    const lastRn=Math.max(7, ...Object.values(rowOf)); let rn2=lastRn;
+    for(const [n,loc,nuevo] of list){
       if(rowOf[n]){ const c=ws.getRow(rowOf[n]).getCell(3); if(String(c.value??'').trim()!==loc) setCell(c, loc); continue; }
       if(!nuevo) continue;
       rn2++; const src=ws.getRow(lastRn), row=ws.getRow(rn2); row.height=src.height;
